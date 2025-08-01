@@ -6,11 +6,11 @@ Unlike `HashSet<int>`, IntSet's memory usage is dictated by the largest key valu
 
 ## Why IntSet?
 - **Fastest possible operations**: Add, Contains, Remove, and set operations (Union, Intersect, Except, SymmetricExcept) are significantly faster than `HashSet<int>` for most workloads.
-- **Predictable memory usage**: Memory is allocated based on the largest key, not the count. For dense sets of small integers, this is extremely efficient.
+- **Predictable memory usage**: Memory is allocated based on the largest key, not the count. For dense sets of small integers, this is extremely efficient. Usually an IntSet with 10 million items uses around 2.5 MB of memory vs the 152 MB used by HashSet.
 - **No allocations for set operations**: Most set operations do not allocate additional memory.
 
 ## API Usage
-IntSet exposes a Span-based API for high performance and zero allocations:
+IntSet uses a Span-based API.
 
 ```csharp
 var set = new IntSet();
@@ -27,8 +27,6 @@ set.UnionWith(values);
 set.ExceptWith(values);
 set.SymmetricExceptWith(values);
 ```
-
-All set operations accept `ReadOnlySpan<int>` for maximum efficiency and flexibility.
 
 ## Benchmarks
 
@@ -70,12 +68,13 @@ IntSet's memory usage is determined by the largest key value, not the number of 
 Even with this limitation, memory usage in the general case is still better than HashSet<int>.
 
 ### Pathological Case: Two Extreme Keys
+In this benchmark, IntSet stores two keys: one small and one extremely large. The memory usage is much higher than HashSet, demonstrating the tradeoff.
+
 | Method                              | N        | Mean      | Allocated   | Alloc Ratio |
 |-------------------------------------|----------|-----------|-------------|-------------|
 | IntSet_MemoryUsage_2KeysExtremeValues | 10       | 12.000 μs | 2,500,216 B | 5,787.54    |
 | HashSet_MemoryUsage_2KeysExtremeValues| 10       | 1.400 μs  | 168 B       | 0.39        |
 
-In this benchmark, IntSet stores two keys: one small and one extremely large. The memory usage is much higher than HashSet, demonstrating the tradeoff.
 
 ### General Memory Usage (N = number of items)
 
@@ -106,5 +105,3 @@ In this benchmark, IntSet stores two keys: one small and one extremely large. Th
 - Use IntSet for sets of small, dense integer values where performance and memory efficiency are critical.
 - Avoid IntSet if you need to store a few keys with very large values, as memory usage will be high.
 
-## License
-MIT
