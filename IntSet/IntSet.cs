@@ -4,24 +4,21 @@ using System.Runtime.CompilerServices;
 
 namespace IntSet;
 
-/// <summary>
-/// IntSet is optimized for speed and memory when working with dense sets of small integers.
-/// Memory usage is O(max_value / 64). Very large values (over 10M) will cause significant memory allocation.
-/// However memory usage is still much lower than a HashSet for the same number of elements.
-/// </summary>
 public class IntSet
 {
-    
     private const int PageBits = 6;
     private const int PageSize = 1 << PageBits;
     private const int PageMask = PageSize - 1;
-    private const int MaxStackBytes = 128 * 1024; // How much stack space we can use for masks. 
+    private const int MaxStackBytes = 128 * 1024; // How much stack space we can use for masks.
     private const int BytesPerPage = sizeof(ulong);
     private const int MaxPageCount = MaxStackBytes / BytesPerPage;
 
     private ulong[] _pages;
     private int _pageCount;
     private int _count;
+    private uint _initialKey;
+    private bool _isInitialized;
+
     public int Count => _count;
 
     public IntSet()
@@ -43,7 +40,7 @@ public class IntSet
         if (pageIndex >= _pages.Length)
         {
             // double until big enough
-            var newSize = Math.Max(_pages.Length * 2, pageIndex + 1);
+            int newSize = Math.Max(_pages.Length * 2, pageIndex + 1);
             Array.Resize(ref _pages, newSize);
         }
     }
@@ -51,16 +48,19 @@ public class IntSet
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(int value)
     {
-        var key = (int) ZigZagEncode(value);
+        uint zigzagValue = ZigZagEncode(value);
+        _initialKey = _isInitialized ? _initialKey : zigzagValue;
+        _isInitialized = true;
+        uint key = zigzagValue - _initialKey;
         // Which page does this key belong to? Each page has 64 bits, so we can store 64 keys per page.
-        var p = key >> PageBits;
+        int p = (int) (key >> PageBits);
         // which bit in the page do we set for this key?
-        var bit = key & PageMask;
-        // create the mask that we |= to set the bit 
-        var mask = 1UL << bit;
+        int bit = (int) (key & PageMask);
+        // create the mask that we |= to set the bit
+        ulong mask = 1UL << bit;
         // make sure the page exists in our _pages array
         EnsurePage(p);
-        var page = _pages[p];
+        ulong page = _pages[p];
         _pages[p] |= mask;
         // if we have created a new page, increment pageCount
         _pageCount = p >= _pageCount ? p + 1 : _pageCount;
@@ -74,31 +74,33 @@ public class IntSet
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(int value)
     {
-        var key = (int) ZigZagEncode(value);
+        if (!_isInitialized) return false;
+        uint key = ZigZagEncode(value) - _initialKey;
         // get page
-        var p = key >> PageBits;
+        int p = (int) (key >> PageBits);
         if (p >= _pageCount) return false;
         // get bit position
-        var bit = key & PageMask;
-        var mask = (1UL << bit);
-        return (_pages[p] & mask) != 0;
+        int bit = (int) (key & PageMask);
+        ulong mask = (1UL << bit);
+        return p < _pages.Length && (_pages[p] & mask) != 0;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(int value)
     {
-        var key = (int) ZigZagEncode(value);
+        if (!_isInitialized) return false;
+        uint key = ZigZagEncode(value) - _initialKey;
         // get page
-        var p = key >> PageBits;
+        int p = (int) (key >> PageBits);
         if (p >= _pageCount) return false;
         // get bit position
-        var bit = key & PageMask;
-        var mask = 1UL << bit;
-        var page = _pages[p];
+        int bit = (int) (key & PageMask);
+        ulong mask = 1UL << bit;
+        ulong page = _pages[p];
         if ((page & mask) == 0)
-            return false; // wasn’t present
+            return false;
 
-        var newPage = page & ~mask;
+        ulong newPage = page & ~mask;
         _pages[p] = newPage;
 
         _count--;
@@ -107,34 +109,38 @@ public class IntSet
 
     public void IntersectWith(Span<int> span)
     {
-        var pageCount = _pageCount;
+        if (!_isInitialized)
+        {
+            return; // Empty set intersected with anything is empty
+        }
 
-        var masks = pageCount < MaxPageCount ? stackalloc ulong[pageCount] : new ulong[pageCount];
-        if (pageCount <= MaxPageCount)
+        int pageCount = _pageCount;
+
+        Span<ulong> masks = pageCount > MaxPageCount ? new ulong[pageCount] : stackalloc ulong[pageCount];
+        if (pageCount > MaxPageCount)
             masks.Clear();
 
-        foreach (var value in span)
+        foreach (int value in span)
         {
-            var v = (int) ZigZagEncode(value);
-            if (v < 0) continue;
+            uint key = ZigZagEncode(value) - _initialKey;
             // get page
-            var p = v >> PageBits;
+            int p = (int) (key >> PageBits);
             if (p >= pageCount) continue;
             // get bit position
-            var bit = v & PageMask;
-            var mask = 1UL << bit;
+            int bit = (int) (key & PageMask);
+            ulong mask = 1UL << bit;
             masks[p] |= mask;
         }
 
-        for (var i = 0; i < _pageCount; i++)
+        for (int i = 0; i < _pageCount; i++)
             _pages[i] &= masks[i];
 
-        var newCount = 0;
+        int newCount = 0;
 
-        for (var i = 0; i < _pageCount; i++)
+        for (int i = 0; i < _pageCount; i++)
         {
             // intersect the page
-            var bits = _pages[i] & masks[i];
+            ulong bits = _pages[i] & masks[i];
             _pages[i] = bits;
 
             if (bits != 0)
@@ -148,7 +154,7 @@ public class IntSet
 
     public void UnionWith(Span<int> span)
     {
-        foreach (var v in span)
+        foreach (int v in span)
         {
             Add(v);
         }
@@ -156,7 +162,7 @@ public class IntSet
 
     public void ExceptWith(Span<int> span)
     {
-        foreach (var v in span)
+        foreach (int v in span)
         {
             Remove(v);
         }
@@ -164,12 +170,18 @@ public class IntSet
 
     public void SymmetricExceptWith(Span<int> span)
     {
-        var maxPage = _pageCount;
-        foreach (var value in span)
+        if (!_isInitialized)
         {
-            var v = (int) ZigZagEncode(value);
-            if (v < 0) continue;
-            var p = v >> PageBits;
+            // If set is empty, symmetric except is just union
+            UnionWith(span);
+            return;
+        }
+
+        int maxPage = _pageCount;
+        foreach (int value in span)
+        {
+            uint key = ZigZagEncode(value) - _initialKey;
+            int p = (int) (key >> PageBits);
             if (p + 1 > maxPage) maxPage = p + 1;
         }
 
@@ -177,37 +189,38 @@ public class IntSet
             Array.Resize(ref _pages, maxPage);
         _pageCount = maxPage;
 
-        var masks = maxPage <= MaxPageCount ? stackalloc ulong[maxPage] : new ulong[maxPage];
+        Span<ulong> masks = maxPage > MaxPageCount ? new ulong[maxPage] : stackalloc ulong[maxPage];
         if (maxPage > MaxPageCount)
             masks.Clear();
 
-        foreach (var value in span)
+        foreach (int value in span)
         {
-            var v = (int) ZigZagEncode(value);
-            var p = v >> PageBits;
-            var bit = v & PageMask;
+            uint key = ZigZagEncode(value) - _initialKey;
+            int p = (int) (key >> PageBits);
+            int bit = (int) (key & PageMask);
             masks[p] |= 1UL << bit;
         }
 
-        var newCount = 0;
+        int newCount = 0;
 
-        for (var p = 0; p < maxPage; p++)
+        for (int p = 0; p < maxPage; p++)
         {
-            var oldBits = _pages[p];
-            var flip = masks[p];
+            ulong oldBits = _pages[p];
+            ulong flip = masks[p];
             if (flip != 0UL)
                 _pages[p] = oldBits ^ flip;
 
-            var bits = _pages[p];
+            ulong bits = _pages[p];
             if (bits != 0UL)
             {
                 newCount += PopCount(bits);
             }
         }
+
         _count = newCount;
     }
 
-    public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount);
+    public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount, _initialKey);
 
     public struct Enumerator
     {
@@ -216,16 +229,18 @@ public class IntSet
         private int _currentPageIndex;
         private ulong _currentBits;
         private int _currentPageBase;
+        private readonly uint _initialKey;
 
         public int Current { get; private set; }
 
-        internal Enumerator(ulong[] pages, int pageCount)
+        internal Enumerator(ulong[] pages, int pageCount, uint initialKey)
         {
             _pages = pages;
             _pageCount = pageCount;
             _currentPageIndex = -1;
             _currentBits = 0;
             _currentPageBase = 0;
+            _initialKey = initialKey;
             Current = 0;
         }
 
@@ -234,22 +249,22 @@ public class IntSet
             // Extract remaining bits from current page
             if (_currentBits != 0)
             {
-                var tz = TrailingZeroCount(_currentBits);
+                int tz = TrailingZeroCount(_currentBits);
                 _currentBits &= _currentBits - 1; // Clear lowest bit
-                Current = ZigZagDecode((uint) (_currentPageBase | tz));
+                Current = ZigZagDecode((uint) (_currentPageBase | tz) + _initialKey);
                 return true;
             }
 
             // Move to next page
-            var pageCount = _pageCount;
+            int pageCount = _pageCount;
             while (++_currentPageIndex < pageCount)
             {
                 _currentBits = _pages[_currentPageIndex];
                 if (_currentBits == 0) continue;
                 _currentPageBase = _currentPageIndex << PageBits;
-                var tz = TrailingZeroCount(_currentBits);
+                int tz = TrailingZeroCount(_currentBits);
                 _currentBits &= _currentBits - 1; // Clear lowest bit
-                Current = ZigZagDecode((uint) (_currentPageBase | tz));
+                Current = ZigZagDecode((uint) (_currentPageBase | tz) + _initialKey);
                 return true;
             }
 
@@ -258,24 +273,20 @@ public class IntSet
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static uint ZigZagEncode(int v) => ((uint) (v << 1)) ^ ((uint) (v >> 31));
+    private static uint ZigZagEncode(int v)
+    {
+        return ((uint) (v << 1)) ^ ((uint) (v >> 31));
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ZigZagDecode(uint u) => (int) ((u >> 1) ^ -(u & 1));
+    private static int ZigZagDecode(uint u)
+    {
+        return (int) ((u >> 1) ^ -(u & 1));
+    }
 
     private const ulong DeBruijnSequence = 0x37E84A99DAE458F;
 
-    private static readonly int[] MultiplyDeBruijnBitPosition =
-    {
-        0, 1, 17, 2, 18, 50, 3, 57,
-        47, 19, 22, 51, 29, 4, 33, 58,
-        15, 48, 20, 27, 25, 23, 52, 41,
-        54, 30, 38, 5, 43, 34, 59, 8,
-        63, 16, 49, 56, 46, 21, 28, 32,
-        14, 26, 24, 40, 53, 37, 42, 7,
-        62, 55, 45, 31, 13, 39, 36, 6,
-        61, 44, 12, 35, 60, 11, 10, 9,
-    };
+    private static readonly int[] MultiplyDeBruijnBitPosition = {0, 1, 17, 2, 18, 50, 3, 57, 47, 19, 22, 51, 29, 4, 33, 58, 15, 48, 20, 27, 25, 23, 52, 41, 54, 30, 38, 5, 43, 34, 59, 8, 63, 16, 49, 56, 46, 21, 28, 32, 14, 26, 24, 40, 53, 37, 42, 7, 62, 55, 45, 31, 13, 39, 36, 6, 61, 44, 12, 35, 60, 11, 10, 9,};
 
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -295,25 +306,27 @@ public class IntSet
 
     public int[] ToArray()
     {
-        var list = new List<int>();
-        foreach (var i in this)
+        List<int> list = new List<int>();
+        foreach (int i in this)
             list.Add(i);
         return list.ToArray();
     }
 
     public List<int> ToList()
     {
-        var list = new List<int>();
-        foreach (var i in this)
+        List<int> list = new List<int>();
+        foreach (int i in this)
             list.Add(i);
         return list;
     }
 
     public void Clear()
     {
-        for (var i = 0; i < _pageCount; i++)
+        for (int i = 0; i < _pageCount; i++)
             _pages[i] = 0ul;
         _pageCount = 0;
         _count = 0;
+        _initialKey = 0;
+        _isInitialized = false;
     }
 }

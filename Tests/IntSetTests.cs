@@ -284,6 +284,25 @@ public class IntSetTests
         Assert.That(_set.Contains(0), Is.False);
         Assert.That(_set.Remove(0), Is.False); // Already removed
     }
+    
+    [Test]
+    public void LargNumbers_HandledCorrectly()
+    {
+        // Zero is a special case that should be handled correctly
+        Assert.That(_set.Add(-88812381), Is.True);
+        Assert.That(_set.Contains(-88812381), Is.True);
+        
+        Assert.That(_set.Add(88812381), Is.True);
+        Assert.That(_set.Contains(88812381), Is.True);
+
+        _set.Clear();
+        
+        Assert.That(_set.Add(88812381), Is.True);
+        Assert.That(_set.Contains(88812381), Is.True);
+        
+        Assert.That(_set.Add(-88812381), Is.True);
+        Assert.That(_set.Contains(-88812381), Is.True);
+    }
 
 
     #region UnionWith Tests

@@ -1,7 +1,5 @@
-using System.Numerics;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Jobs;
-
 namespace IntSet.Benchmarks;
 
 [MarkdownExporterAttribute.GitHub]

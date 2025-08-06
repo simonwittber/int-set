@@ -16,7 +16,8 @@ namespace IntegrityTables.Benchmarks
             config.AddColumn(BaselineRatioColumn.RatioMean);
             config.AddColumn(StatisticColumn.OperationsPerSecond);
             config.AddExporter(JsonExporter.Brief);
-            
+            // config.WithOptions(ConfigOptions.DisableOptimizationsValidator);
+            // BenchmarkRunner.Run<IntMapBenchmarks>(config);
             BenchmarkSwitcher
                 .FromAssembly(typeof(Program).Assembly)
                 .Run(args, config);

@@ -6,13 +6,16 @@ namespace IntSet;
 
 public class IntMap<T>
 {
-    
-    private const int PageBits = 10;          
+    private const int PageBits = 10;
     private const int PageSize = 1 << PageBits;
     private const int PageMask = PageSize - 1;
 
-    private readonly List<T[]?> _values = new List<T[]?>();
+    private readonly List<T[]> _values = new List<T[]>();
     private readonly IntSet _keys = new IntSet();
+
+    private uint _initialKey;
+    private bool _isInitialized;
+    public int Count { get; private set; }
 
     private void EnsurePage(int pageIndex)
     {
@@ -20,19 +23,23 @@ public class IntMap<T>
         {
             _values.Add(null);
         }
-        if (_values[pageIndex] == null)
-        {
-            _values[pageIndex] = new T[PageSize];
-        }
+
+        _values[pageIndex] ??= new T[PageSize];
+    }
+
+    public void EnsureCapacity(int items)
+    {
+        // NOP, as capacity is managed dynamically based on keys
     }
 
     public bool Remove(int v)
     {
         if (!_keys.Remove(v)) return false;
-        var u = ZigZagEncode(v);
-        var pageIndex = (int) (u >> PageBits);
-        var slot = (int)(u & PageMask);
-        _values[pageIndex]![slot] = default(T);
+        uint u = ZigZagEncode(v) - _initialKey;
+        int pageIndex = (int) (u >> PageBits);
+        int slot = (int) (u & PageMask);
+        _values[pageIndex]![slot] = default(T)!;
+        Count--;
         return true;
     }
 
@@ -42,55 +49,111 @@ public class IntMap<T>
     {
         if (_keys.Contains(v))
         {
-            var key = (int) ZigZagEncode(v);
-            var pageIndex = key >> PageBits;
-            var slot = key & PageMask;
+            uint key = ZigZagEncode(v) - _initialKey;
+            int pageIndex = (int)(key >> PageBits);
+            int slot = (int)(key & PageMask);
             value = _values[pageIndex]![slot];
             return true;
         }
-        value = default(T);
+
+        value = default(T)!;
         return false;
     }
-    
+
+    public void Add(int key, T item)
+    {
+        if (_keys.Contains(key))
+            throw new InvalidOperationException("Key already exists");
+        this[key] = item;
+    }
+
+    public void TryAdd(int key, T item)
+    {
+        if (!ContainsKey(key))
+            this[key] = item;
+    }
+
     public T this[int v]
     {
         get
         {
-            if (!_keys.Contains(v)) 
+            if (!_keys.Contains(v))
                 throw new KeyNotFoundException();
-            var key = (int) ZigZagEncode(v);
-            var pageIndex = key >> PageBits;
-            var slot = key & PageMask;
+            uint key = ZigZagEncode(v) - _initialKey;
+            int pageIndex = (int)(key >> PageBits);
+            int slot = (int)(key & PageMask);
             return _values[pageIndex]![slot];
         }
         set
         {
-            var key = (int) ZigZagEncode(v);
-            var pageIndex = key >> PageBits;
+            uint zigzagValue = ZigZagEncode(v);
+            _initialKey = _isInitialized ? _initialKey : zigzagValue;
+            _isInitialized = true;
+            uint key = zigzagValue - _initialKey;
+            int pageIndex = (int)(key >> PageBits);
             EnsurePage(pageIndex);
-            var slot = key & PageMask;
+            int slot = (int)(key & PageMask);
             _values[pageIndex]![slot] = value;
-            _keys.Add(v);
+            if (_keys.Add(v))
+                Count++;
         }
     }
 
+
     public void Clear()
     {
-        foreach (var page in _values)
+        foreach (T[] page in _values)
         {
             if (page != null)
             {
                 Array.Fill(page, default);
             }
         }
+
+        _isInitialized = false;
+        _initialKey = 0;
+        Count = 0;
         _keys.Clear();
     }
 
     public IntSet.Enumerator GetEnumerator() => _keys.GetEnumerator();
-    
+
+    public ValueEnumerator Values => new ValueEnumerator(this);
+
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint ZigZagEncode(int v) => ((uint) (v << 1)) ^ ((uint) (v >> 31));
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static int ZigZagDecode(uint u) => (int) ((u >> 1) ^ -(u & 1));
+    public struct ValueEnumerator
+    {
+        IntMap<T> _map;
+        int _pageIndex;
+        int _slotIndex;
+        T[] activePage;
+        private IntSet.Enumerator _keyEnumerator;
+
+        public ValueEnumerator GetEnumerator() => this;
+
+        public T Current { get; private set; }
+
+        public ValueEnumerator(IntMap<T> map)
+        {
+            _map = map;
+            _keyEnumerator = map._keys.GetEnumerator();
+            _pageIndex = 0;
+            _slotIndex = 0;
+            activePage = null;
+        }
+
+        public bool MoveNext()
+        {
+            // Move to next key
+            if (_keyEnumerator.MoveNext())
+            {
+                int key = _keyEnumerator.Current;
+                Current = _map[key];
+                return true;
+            }
+            return false;
+        }
+    }
 }
