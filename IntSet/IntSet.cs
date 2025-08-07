@@ -18,6 +18,7 @@ public class IntSet
     private int _count;
     private int _initialKey;
     private bool _isInitialized;
+    DenseIdMap _idMap = new DenseIdMap(1024);
 
     public int Count => _count;
 

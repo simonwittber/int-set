@@ -45,8 +45,6 @@ public class DenseIterationBenchmarks
         sparseHashSet = new HashSet<int>(bKeys);
     }
     
-    
-
     [Benchmark]
     public void IntSet_DenseValues_Iterate()
     {
@@ -56,7 +54,7 @@ public class DenseIterationBenchmarks
     }
     
     [Benchmark]
-    public void ValueMap_DenseValues_Iterate()
+    public void DenseIdMapDenseValues_Iterate()
     {
         var x = 0;
         foreach (var i in _denseIdMap)

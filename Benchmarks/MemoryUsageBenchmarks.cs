@@ -31,7 +31,7 @@ public class MemoryUsageBenchmarks
     }
     
     [Benchmark]
-    public IntSet ValueMap_MemoryUsage()
+    public IntSet DenseIdMapMemoryUsage()
     {
         var vm = new IntSet(aKeys);
         return vm;

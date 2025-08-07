@@ -16,7 +16,7 @@ public class AddBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void ValueMap_Add()
+    public void DenseIdMapAdd()
     {
         for (var i = 0; i < N; i++)
             DenseIdMap.GetOrAdd(lookupKeys[i]);

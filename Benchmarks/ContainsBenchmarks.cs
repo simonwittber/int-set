@@ -16,10 +16,10 @@ public class ContainsBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void ValueMap_Contains()
+    public void DenseIdMapContains()
     {
         for (var i = 0; i < N; i++)
-            DenseIdMap.Exists(lookupKeys[i]);
+            DenseIdMap.Contains(lookupKeys[i]);
     }
 
     [Benchmark(Baseline = true)]
