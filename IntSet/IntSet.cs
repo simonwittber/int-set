@@ -135,17 +135,17 @@ public class IntSet
             var mask = 1UL << bit;
             masks[p] |= mask;
         }
-
+        var pages = _pages;
         for (var i = 0; i < _pageCount; i++)
-            _pages[i] &= masks[i];
+            pages[i] &= masks[i];
 
         var newCount = 0;
 
         for (var i = 0; i < _pageCount; i++)
         {
             // intersect the page
-            var bits = _pages[i] & masks[i];
-            _pages[i] = bits;
+            var bits = pages[i] & masks[i];
+            pages[i] = bits;
 
             if (bits != 0)
             {
@@ -177,14 +177,13 @@ public class IntSet
         var maxPage = _pageCount;
         foreach (var value in span)
         {
-            
             var key = ZigZagEncode(value -_initialKey);
             var p = (int) (key >> PageBits);
             if (p + 1 > maxPage) maxPage = p + 1;
         }
-
-        if (maxPage > _pages.Length)
-            Array.Resize(ref _pages, maxPage);
+        var pages = _pages;
+        if (maxPage > pages.Length)
+            Array.Resize(ref pages, maxPage);
         _pageCount = maxPage;
 
         var masks = maxPage > MaxPageCount ? new ulong[maxPage] : stackalloc ulong[maxPage];
@@ -203,12 +202,12 @@ public class IntSet
 
         for (var p = 0; p < maxPage; p++)
         {
-            var oldBits = _pages[p];
+            var oldBits = pages[p];
             var flip = masks[p];
             if (flip != 0UL)
-                _pages[p] = oldBits ^ flip;
+                pages[p] = oldBits ^ flip;
 
-            var bits = _pages[p];
+            var bits = pages[p];
             if (bits != 0UL)
             {
                 newCount += PopCount(bits);
