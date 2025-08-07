@@ -14,6 +14,13 @@ public class ContainsBenchmarks : IntSetBenchmarkBase
         for (var i = 0; i < N; i++)
             intSet.Contains(lookupKeys[i]);
     }
+    
+    [Benchmark]
+    public void ValueMap_Contains()
+    {
+        for (var i = 0; i < N; i++)
+            DenseIdMap.Exists(lookupKeys[i]);
+    }
 
     [Benchmark(Baseline = true)]
     public void HashSet_Contains()

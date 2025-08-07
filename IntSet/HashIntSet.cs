@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
 
 namespace IntSet;
 
-public class IntSet
+public class HashIntSet
 {
     private const int PageBits = 6;
     private const int PageSize = 1 << PageBits;
@@ -20,8 +20,10 @@ public class IntSet
     private bool _isInitialized;
 
     public int Count => _count;
+    
+    DenseIdMap hash = new DenseIdMap();
 
-    public IntSet()
+    public HashIntSet()
     {
         _pages = new ulong[16];
         _pageCount = 0;
@@ -29,7 +31,7 @@ public class IntSet
         _isInitialized = false;
     }
 
-    public IntSet(Span<int> values)
+    public HashIntSet(Span<int> values)
     {
         _pages = new ulong[16];
         _pageCount = 0;

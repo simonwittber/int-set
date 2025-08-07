@@ -14,6 +14,13 @@ public class RemoveBenchmarks : IntSetBenchmarkBase
         for (var i = 0; i < N; i++)
             intSet.Remove(lookupKeys[i]);
     }
+    
+    [Benchmark]
+    public void ValueMap_Remove()
+    {
+        for (var i = 0; i < N; i++)
+            DenseIdMap.Remove(lookupKeys[i]);
+    }
 
     [Benchmark(Baseline = true)]
     public void HashSet_Remove()

@@ -19,20 +19,29 @@ public class MemoryUsageBenchmarks
         aKeys = new int[N];
         for (var i = 0; i < N; i++)
         {
-            aKeys[i] = N;
+            aKeys[i] = i;
         }
     }
 
     [Benchmark]
-    public void IntSet_MemoryUsage()
+    public IntSet IntSet_MemoryUsage()
     {
         var intSet = new IntSet(aKeys);
+        return intSet;
+    }
+    
+    [Benchmark]
+    public IntSet ValueMap_MemoryUsage()
+    {
+        var vm = new IntSet(aKeys);
+        return vm;
     }
     
     [Benchmark(Baseline = true)]
-    public void HashSet_MemoryUsage()
+    public HashSet<int> HashSet_MemoryUsage()
     {
         var hashSet = new HashSet<int>(aKeys);
+        return hashSet;
     }
     
     [Benchmark]

@@ -18,6 +18,7 @@ public class DenseIterationBenchmarks
     
     private IntSet sparseIntSet;
     HashSet<int> sparseHashSet;
+    DenseIdMap _denseIdMap;
     
     [IterationSetup]
     public void Setup()
@@ -33,7 +34,7 @@ public class DenseIterationBenchmarks
 
         intSet = new IntSet(aKeys);
         hashSet = new HashSet<int>(aKeys);
-        
+        _denseIdMap = new DenseIdMap(aKeys);
         bKeys = new int[N];
         // generate a sparse array of values for testing iteration
         for (var i = 0; i < N; i++)
@@ -51,6 +52,14 @@ public class DenseIterationBenchmarks
     {
         var x = 0;
         foreach (var i in intSet)
+            x += i;
+    }
+    
+    [Benchmark]
+    public void ValueMap_DenseValues_Iterate()
+    {
+        var x = 0;
+        foreach (var i in _denseIdMap)
             x += i;
     }
     

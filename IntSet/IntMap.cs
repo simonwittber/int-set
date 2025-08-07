@@ -13,7 +13,7 @@ public class IntMap<T>
     private readonly List<T[]> _values = new List<T[]>();
     private readonly IntSet _keys = new IntSet();
 
-    private uint _initialKey;
+    private int _initialKey;
     private bool _isInitialized;
     public int Count { get; private set; }
 
@@ -29,15 +29,15 @@ public class IntMap<T>
 
     public void EnsureCapacity(int items)
     {
-        // NOP, as capacity is managed dynamically based on keys
+        // NOP, as capacity is managed dynamically based on key range, not number of items
     }
 
     public bool Remove(int v)
     {
         if (!_keys.Remove(v)) return false;
-        uint u = ZigZagEncode(v) - _initialKey;
-        int pageIndex = (int) (u >> PageBits);
-        int slot = (int) (u & PageMask);
+        var u = ZigZagEncode(v - _initialKey);
+        var pageIndex = (int) (u >> PageBits);
+        var slot = (int) (u & PageMask);
         _values[pageIndex]![slot] = default(T)!;
         Count--;
         return true;
@@ -49,9 +49,9 @@ public class IntMap<T>
     {
         if (_keys.Contains(v))
         {
-            uint key = ZigZagEncode(v) - _initialKey;
-            int pageIndex = (int)(key >> PageBits);
-            int slot = (int)(key & PageMask);
+            var key = ZigZagEncode(v - _initialKey);
+            var pageIndex = (int)(key >> PageBits);
+            var slot = (int)(key & PageMask);
             value = _values[pageIndex]![slot];
             return true;
         }
@@ -79,20 +79,19 @@ public class IntMap<T>
         {
             if (!_keys.Contains(v))
                 throw new KeyNotFoundException();
-            uint key = ZigZagEncode(v) - _initialKey;
-            int pageIndex = (int)(key >> PageBits);
-            int slot = (int)(key & PageMask);
+            var key = ZigZagEncode(v - _initialKey);
+            var pageIndex = (int)(key >> PageBits);
+            var slot = (int)(key & PageMask);
             return _values[pageIndex]![slot];
         }
         set
         {
-            uint zigzagValue = ZigZagEncode(v);
-            _initialKey = _isInitialized ? _initialKey : zigzagValue;
+            _initialKey = _isInitialized ? _initialKey : v;
             _isInitialized = true;
-            uint key = zigzagValue - _initialKey;
-            int pageIndex = (int)(key >> PageBits);
+            var key = ZigZagEncode(v - _initialKey);
+            var pageIndex = (int)(key >> PageBits);
             EnsurePage(pageIndex);
-            int slot = (int)(key & PageMask);
+            var slot = (int)(key & PageMask);
             _values[pageIndex]![slot] = value;
             if (_keys.Add(v))
                 Count++;
@@ -102,7 +101,7 @@ public class IntMap<T>
 
     public void Clear()
     {
-        foreach (T[] page in _values)
+        foreach (var page in _values)
         {
             if (page != null)
             {
@@ -149,7 +148,7 @@ public class IntMap<T>
             // Move to next key
             if (_keyEnumerator.MoveNext())
             {
-                int key = _keyEnumerator.Current;
+                var key = _keyEnumerator.Current;
                 Current = _map[key];
                 return true;
             }

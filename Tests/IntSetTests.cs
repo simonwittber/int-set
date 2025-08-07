@@ -283,8 +283,7 @@ public class IntSetTests
         Assert.That(_set.Remove(0), Is.True);
         Assert.That(_set.Contains(0), Is.False);
         Assert.That(_set.Remove(0), Is.False); // Already removed
-    }
-    
+    }    
     [Test]
     public void LargNumbers_HandledCorrectly()
     {
@@ -458,4 +457,239 @@ public class IntSetTests
     }
 
     #endregion
+
+    [Test]
+    public void Remove_NegativeValues_WorksCorrectly()
+    {
+        var negativeValues = new[] { -1, -100, -1000, -50000 };
+        
+        // Add negative values
+        foreach (var value in negativeValues)
+        {
+            _set.Add(value);
+        }
+        
+        // Remove them and verify
+        foreach (var value in negativeValues)
+        {
+            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
+            Assert.That(_set.Contains(value), Is.False, $"Set still contains {value}");
+        }
+    }
+
+    [Test]
+    public void Remove_LargeValues_WorksCorrectly()
+    {
+        var largeValues = new[] { int.MaxValue, int.MinValue, int.MaxValue - 1, int.MinValue + 1, 1000000000, -1000000000 };
+        
+        // Add large values
+        foreach (var value in largeValues)
+        {
+            _set.Add(value);
+        }
+        
+        // Remove them and verify
+        foreach (var value in largeValues)
+        {
+            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
+            Assert.That(_set.Contains(value), Is.False, $"Set still contains {value}");
+        }
+    }
+
+    [Test]
+    public void Remove_ZeroValue_WorksCorrectly()
+    {
+        _set.Add(0);
+        Assert.That(_set.Contains(0), Is.True);
+        
+        Assert.That(_set.Remove(0), Is.True);
+        Assert.That(_set.Contains(0), Is.False);
+        
+        // Try removing again
+        Assert.That(_set.Remove(0), Is.False);
+    }
+
+    [Test]
+    public void Remove_UpdatesCountCorrectly()
+    {
+        var values = new[] { 10, 20, 30, 40, 50 };
+        
+        // Add values and verify count
+        foreach (var value in values)
+        {
+            _set.Add(value);
+        }
+        Assert.That(_set.Count, Is.EqualTo(values.Length));
+        
+        // Remove values one by one and verify count decreases
+        for (int i = 0; i < values.Length; i++)
+        {
+            Assert.That(_set.Remove(values[i]), Is.True);
+            Assert.That(_set.Count, Is.EqualTo(values.Length - i - 1), $"Count incorrect after removing {values[i]}");
+        }
+        
+        Assert.That(_set.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Remove_PartialRemoval_MaintainsRemainingElements()
+    {
+        var allValues = new[] { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10 };
+        var toRemove = new[] { 2, 4, 6, 8, 10 };
+        var shouldRemain = new[] { 1, 3, 5, 7, 9 };
+        
+        // Add all values
+        foreach (var value in allValues)
+        {
+            _set.Add(value);
+        }
+        
+        // Remove some values
+        foreach (var value in toRemove)
+        {
+            Assert.That(_set.Remove(value), Is.True);
+        }
+        
+        // Verify removed values are gone
+        foreach (var value in toRemove)
+        {
+            Assert.That(_set.Contains(value), Is.False, $"Removed value {value} still present");
+        }
+        
+        // Verify remaining values are still there
+        foreach (var value in shouldRemain)
+        {
+            Assert.That(_set.Contains(value), Is.True, $"Remaining value {value} was lost");
+        }
+        
+        Assert.That(_set.Count, Is.EqualTo(shouldRemain.Length));
+    }
+
+    [Test]
+    public void Remove_AfterInitialKeySet_WorksCorrectly()
+    {
+        // Test removing when initial key is set to various values
+        var initialKeys = new[] { 0, 100, -100, int.MaxValue, int.MinValue };
+        
+        foreach (var initialKey in initialKeys)
+        {
+            var testSet = new IntSet();
+            
+            // Set initial key by adding first value
+            testSet.Add(initialKey);
+            
+            // Add more values relative to initial key
+            var additionalValues = new[] { initialKey + 1, initialKey - 1, initialKey + 100, initialKey - 100 };
+            foreach (var value in additionalValues)
+            {
+                testSet.Add(value);
+            }
+            
+            // Remove all values including initial key
+            Assert.That(testSet.Remove(initialKey), Is.True, $"Failed to remove initial key {initialKey}");
+            
+            foreach (var value in additionalValues)
+            {
+                Assert.That(testSet.Remove(value), Is.True, $"Failed to remove {value} when initial key was {initialKey}");
+            }
+            
+            // Verify all removed
+            Assert.That(testSet.Contains(initialKey), Is.False);
+            foreach (var value in additionalValues)
+            {
+                Assert.That(testSet.Contains(value), Is.False);
+            }
+        }
+    }
+
+    [Test]
+    public void Remove_RandomPattern_MaintainsConsistency()
+    {
+        var rng = new Random(12345);
+        var allValues = new HashSet<int>();
+        
+        // Add 1000 random values
+        for (int i = 0; i < 1000; i++)
+        {
+            int value = rng.Next(-10000, 10000);
+            if (allValues.Add(value))
+            {
+                _set.Add(value);
+            }
+        }
+        
+        var valuesList = allValues.ToList();
+        var toRemove = new HashSet<int>();
+        
+        // Randomly select half to remove
+        for (int i = 0; i < valuesList.Count / 2; i++)
+        {
+            int index = rng.Next(valuesList.Count);
+            toRemove.Add(valuesList[index]);
+        }
+        
+        // Remove selected values
+        foreach (var value in toRemove)
+        {
+            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
+        }
+        
+        // Verify removed values are gone and remaining values are still there
+        foreach (var value in allValues)
+        {
+            bool shouldExist = !toRemove.Contains(value);
+            Assert.That(_set.Contains(value), Is.EqualTo(shouldExist), 
+                $"Value {value} existence mismatch: expected {shouldExist}");
+        }
+        
+        Assert.That(_set.Count, Is.EqualTo(allValues.Count - toRemove.Count));
+    }
+
+    [Test]
+    public void Remove_DoesNotAffectIteration_OfRemainingElements()
+    {
+        var values = new[] { 10, 20, 30, 40, 50, 60, 70, 80, 90, 100 };
+        var toRemove = new[] { 20, 40, 60, 80, 100 };
+        var expectedRemaining = new[] { 10, 30, 50, 70, 90 };
+        
+        // Add all values
+        foreach (var value in values)
+        {
+            _set.Add(value);
+        }
+        
+        // Remove some values
+        foreach (var value in toRemove)
+        {
+            _set.Remove(value);
+        }
+        
+        // Iterate and collect remaining values
+        var iteratedValues = new List<int>();
+        foreach (var value in _set)
+        {
+            iteratedValues.Add(value);
+        }
+        
+        // Sort both for comparison (iteration order might differ)
+        iteratedValues.Sort();
+        Array.Sort(expectedRemaining);
+        
+        CollectionAssert.AreEqual(expectedRemaining, iteratedValues);
+    }
+
+    [Test]
+    public void Remove_MultipleRemovesOfSameValue_OnlyFirstReturnsTrue()
+    {
+        _set.Add(42);
+        
+        // First remove should succeed
+        Assert.That(_set.Remove(42), Is.True);
+        Assert.That(_set.Contains(42), Is.False);
+        
+        // Subsequent removes should fail
+        Assert.That(_set.Remove(42), Is.False);
+        Assert.That(_set.Remove(42), Is.False);
+        Assert.That(_set.Remove(42), Is.False);
+    }
 }

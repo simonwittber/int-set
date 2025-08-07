@@ -9,6 +9,7 @@ public abstract class IntSetBenchmarkBase
     protected int[] aKeys, bKeys, lookupKeys;
     protected IntSet intSet;
     protected HashSet<int> hashSet;
+    protected DenseIdMap DenseIdMap;
     
     [IterationSetup]
     public void Setup()
@@ -25,5 +26,6 @@ public abstract class IntSetBenchmarkBase
         }
         intSet = new IntSet(aKeys);
         hashSet = new HashSet<int>(aKeys);
+        DenseIdMap = new DenseIdMap(aKeys);
     }
 }
