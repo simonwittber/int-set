@@ -4,6 +4,11 @@ using System.Runtime.CompilerServices;
 
 namespace IntSet;
 
+/// <summary>
+/// A memory-efficient set for storing integers, optimized for dense ranges of integer keys.
+/// Note, a sparse, large range is not stored efficiently.
+/// Use this class for fast membership checks and set operations on integers.
+/// </summary>
 public class IntSet
 {
     private const int PageBits = 6;
@@ -18,7 +23,6 @@ public class IntSet
     private int _count;
     private int _initialKey;
     private bool _isInitialized;
-    DenseIdMap _idMap = new DenseIdMap(1024);
 
     public int Count => _count;
 
@@ -266,12 +270,20 @@ public class IntSet
         }
     }
 
+    /// <summary>
+    /// Converts negative and positive integers to a non-negative integer using ZigZag encoding.
+    /// -1 => 1, -2 => 3, 0 => 0, 1 => 2, 2 => 4, etc.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint ZigZagEncode(int v)
     {
         return ((uint) (v << 1)) ^ ((uint) (v >> 31));
     }
 
+    /// <summary>
+    /// Converts a non-negative integer back to a signed integer using ZigZag decoding.
+    /// 1 => -1, 3 => -2, 0 => 0, 2 => 1, 4 => 2, etc.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int ZigZagDecode(uint u)
     {
@@ -282,13 +294,15 @@ public class IntSet
 
     private static readonly int[] MultiplyDeBruijnBitPosition = {0, 1, 17, 2, 18, 50, 3, 57, 47, 19, 22, 51, 29, 4, 33, 58, 15, 48, 20, 27, 25, 23, 52, 41, 54, 30, 38, 5, 43, 34, 59, 8, 63, 16, 49, 56, 46, 21, 28, 32, 14, 26, 24, 40, 53, 37, 42, 7, 62, 55, 45, 31, 13, 39, 36, 6, 61, 44, 12, 35, 60, 11, 10, 9,};
 
-
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int TrailingZeroCount(ulong b)
     {
         return MultiplyDeBruijnBitPosition[((ulong) ((long) b & -(long) b) * DeBruijnSequence) >> 58];
     }
 
+    /// <summary>
+    /// Returns the number of bits set to 1 in the given ulong value.
+    /// </summary>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int PopCount(ulong x)
     {
@@ -300,18 +314,18 @@ public class IntSet
 
     public int[] ToArray()
     {
-        var list = new List<int>();
+        var array = new int[_count];
+        var index = 0;
         foreach (var i in this)
-            list.Add(i);
-        return list.ToArray();
+        {
+            array[index++] = i;
+        }
+        return array;
     }
 
     public List<int> ToList()
     {
-        var list = new List<int>();
-        foreach (var i in this)
-            list.Add(i);
-        return list;
+        return new List<int>(ToArray());
     }
 
     public void Clear()
