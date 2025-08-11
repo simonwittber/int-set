@@ -231,6 +231,11 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
     public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount, _initialKey);
     IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    
+    public Enumerator GetEnumeratorForPageRange(int startPage, int endPage)
+    {
+        return new Enumerator(_pages, startPage, endPage, _initialKey);
+    }
 
     public struct Enumerator : IEnumerator<int>
     {
@@ -240,6 +245,8 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         private ulong _currentBits;
         private int _currentPageBase;
         private readonly int _initialKey;
+
+        public Enumerator GetEnumerator() => this;
 
         public void Reset()
         {
@@ -257,6 +264,17 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
             _pages = pages;
             _pageCount = pageCount;
             _currentPageIndex = -1;
+            _currentBits = 0;
+            _currentPageBase = 0;
+            _initialKey = initialKey;
+            Current = 0;
+        }
+        
+        internal Enumerator(ulong[] pages, int startPage, int endPage, int initialKey)
+        {
+            _pages = pages;
+            _pageCount = endPage; // Exclusive end
+            _currentPageIndex = startPage - 1; // Start before first page
             _currentBits = 0;
             _currentPageBase = 0;
             _initialKey = initialKey;

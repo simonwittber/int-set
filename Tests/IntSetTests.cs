@@ -692,4 +692,48 @@ public class IntSetTests
         Assert.That(_set.Remove(42), Is.False);
         Assert.That(_set.Remove(42), Is.False);
     }
+    
+    [Test]
+    public void EnumeratorForPageRange_WithZigzagEncoding_MultiplePages_ReturnsCorrectValues()
+    {
+        // Zigzag encoding: positive n -> n*2, negative n -> (-n*2)-1
+        // Page 0: zigzag 0-63   (0, -1, 1, -2, 2, ..., -31, 31, -32)
+        // Page 1: zigzag 64-127 (32, -33, 33, -34, 34, ..., -63, 63, -64)
+        // Page 2: zigzag 128+   (64, -65, 65, ...)
+    
+        var testValues = new[]
+        {
+            0, -1, 1, -32,     // Page 0 (zigzag: 0, 1, 2, 63)
+            32, -33, 33, -63,  // Page 1 (zigzag: 64, 65, 66, 125)
+            64, -65            // Page 2 (zigzag: 128, 129)
+        };
+    
+        foreach (var value in testValues)
+        {
+            _set.Add(value);
+        }
+    
+        // Get enumerator for pages 1-2
+        var pageEnumerator = _set.GetEnumeratorForPageRange(1, 3);
+        var pageValues = new List<int>();
+    
+        while (pageEnumerator.MoveNext())
+        {
+            pageValues.Add(pageEnumerator.Current);
+        }
+    
+        // Values that should be in pages 1-2
+        var expectedInRange = new[] { 32, -33, 33, -63, 64, -65 };
+        var expectedNotInRange = new[] { 0, -1, 1, -32 };
+    
+        foreach (var value in expectedInRange)
+        {
+            Assert.That(pageValues.Contains(value), Is.True, $"Pages 1-2 should contain {value}");
+        }
+    
+        foreach (var value in expectedNotInRange)
+        {
+            Assert.That(pageValues.Contains(value), Is.False, $"Pages 1-2 should not contain {value}");
+        }
+    }
 }
