@@ -16,4 +16,10 @@
       <ProjectReference Include="..\IntSet\IntSet.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Content Include="bin\Release\net8.0\BenchmarkDotNet.Artifacts\results\IntSet.Benchmarks.AllIntSetBenchmarks-report-github.md" />
+      <Content Include="bin\Release\net8.0\BenchmarkDotNet.Artifacts\results\IntSet.Benchmarks.IntMapBenchmarks-report-github.md" />
+      <Content Include="bin\Release\net8.0\BenchmarkDotNet.Artifacts\results\IntSet.Benchmarks.MemoryUsageBenchmarks-report-github.md" />
+    </ItemGroup>
+
 </Project>

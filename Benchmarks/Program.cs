@@ -12,8 +12,6 @@ namespace IntegrityTables.Benchmarks
         public static void Main(string[] args)
         {
             var config = ManualConfig.Create(DefaultConfig.Instance);
-            config.AddColumn(RankColumn.Arabic);
-            config.AddColumn(BaselineRatioColumn.RatioMean);
             config.AddColumn(StatisticColumn.OperationsPerSecond);
             config.AddExporter(JsonExporter.Brief);
             // config.WithOptions(ConfigOptions.DisableOptimizationsValidator);

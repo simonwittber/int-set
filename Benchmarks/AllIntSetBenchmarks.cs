@@ -8,18 +8,12 @@ namespace IntSet.Benchmarks;
 [MemoryDiagnoser(false)]
 public class AllIntSetBenchmarks : IntSetBenchmarkBase
 {
+
     [Benchmark]
     public void IntSet_Contains()
     {
         for (var i = 0; i < N; i++)
             intSet.Contains(lookupKeys[i]);
-    }
-    
-    [Benchmark]
-    public void DenseIdMapContains()
-    {
-        for (var i = 0; i < N; i++)
-            DenseIdMap.Contains(lookupKeys[i]);
     }
 
     [Benchmark()]
@@ -34,13 +28,6 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     {
         for (var i = 0; i < N; i++)
             intSet.Add(lookupKeys[i]);
-    }
-    
-    [Benchmark]
-    public void DenseIdMapAdd()
-    {
-        for (var i = 0; i < N; i++)
-            DenseIdMap.GetOrAdd(lookupKeys[i]);
     }
 
     [Benchmark()]
@@ -57,15 +44,7 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
         foreach (var i in intSet)
             x += i;
     }
-    
-    [Benchmark]
-    public void DenseIdMapDenseValues_Iterate()
-    {
-        var x = 0;
-        foreach (var i in DenseIdMap)
-            x += i;
-    }
-    
+
     [Benchmark()]
     public void HashSet_DenseValues_Iterate()
     {
@@ -75,62 +54,10 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public IntSet IntSet_MemoryUsage()
-    {
-        var intSet = new IntSet(aKeys);
-        return intSet;
-    }
-    
-    [Benchmark]
-    public IntSet DenseIdMapMemoryUsage()
-    {
-        var vm = new IntSet(aKeys);
-        return vm;
-    }
-    
-    [Benchmark()]
-    public HashSet<int> HashSet_MemoryUsage()
-    {
-        var hashSet = new HashSet<int>(aKeys);
-        return hashSet;
-    }
-    
-    [Benchmark]
-    public void IntSet_MemoryUsage_2KeysExtremeValues()
-    {
-        var intSet = new IntSet();
-        intSet.Add(0);
-        intSet.Add(10000000);
-    }
-    
-    [Benchmark()]
-    public void DenseIdMapMemoryUsage_2KeysExtremeValues()
-    {
-        var densemap = new DenseIdMap();
-        densemap.GetOrAdd(0);
-        densemap.GetOrAdd(10000000);
-    }
-    
-    [Benchmark()]
-    public void HashSet_MemoryUsage_2KeysExtremeValues()
-    {
-        var hashSet = new HashSet<int>();
-        hashSet.Add(0);
-        hashSet.Add(10000000);
-    }
-    
-    [Benchmark]
     public void IntSet_Remove()
     {
         for (var i = 0; i < N; i++)
             intSet.Remove(lookupKeys[i]);
-    }
-    
-    [Benchmark]
-    public void DenseIdMapRemove()
-    {
-        for (var i = 0; i < N; i++)
-            DenseIdMap.Remove(lookupKeys[i]);
     }
 
     [Benchmark()]
