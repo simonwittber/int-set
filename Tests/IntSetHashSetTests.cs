@@ -67,6 +67,51 @@ public class IdSetHashSetComparisonTests
     }
     
     [Test]
+    public void CheckIntersection_IntSet_IntSet()
+    {
+        var a = new[] { 0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000 };
+        var b = new[] {0, 1, 5, 10, 12312312};
+        
+        _intSet.UnionWith(new IntSet(a));
+        _intSet.IntersectWith(new IntSet(b));
+        
+        _hashSet.UnionWith(a);
+        _hashSet.IntersectWith(b);
+        
+        Assert.That(_hashSet, Is.EquivalentTo(_intSet.ToList()));
+    }
+    
+    [Test]
+    public void CheckExceptWith_IntSet_IntSet()
+    {
+        var a = new[] { 0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000 };
+        var b = new[] {0, 1, 5, 10, 12312312};
+        
+        _intSet.UnionWith(new IntSet(a));
+        _intSet.ExceptWith(new IntSet(b));
+        
+        _hashSet.UnionWith(a);
+        _hashSet.ExceptWith(b);
+        
+        Assert.That(_hashSet, Is.EquivalentTo(_intSet.ToList()));
+    }
+    
+    [Test]
+    public void CheckSymmetricExceptWith_IntSet_IntSet()
+    {
+        var a = new[] { 0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000 };
+        var b = new[] {0, 1, 5, 10, 12312312};
+        
+        _intSet.UnionWith(new IntSet(a));
+        _intSet.SymmetricExceptWith(new IntSet(b));
+        
+        _hashSet.UnionWith(a);
+        _hashSet.SymmetricExceptWith(b);
+        
+        Assert.That(_hashSet, Is.EquivalentTo(_intSet.ToList()));
+    }
+    
+    [Test]
     public void CheckIterator()
     {
         var values = new[] { 0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000 };

@@ -141,9 +141,15 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_ExceptWith()
+    public void IntSet_ExceptWith_Span()
     {
         intSet.ExceptWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void IntSet_ExceptWith_IntSet()
+    {
+        intSet.ExceptWith(intSetB);
     }
 
     [Benchmark()]
@@ -153,9 +159,15 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_IntersectWith()
+    public void IntSet_IntersectWith_Span()
     {
         intSet.IntersectWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void IntSet_IntersectWith_IntSet()
+    {
+        intSet.IntersectWith(intSetB);
     }
 
     [Benchmark()]
@@ -165,9 +177,15 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_SymmetricExceptWith()
+    public void IntSet_SymmetricExceptWith_Span()
     {
         intSet.SymmetricExceptWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void IntSet_SymmetricExceptWith_IntSet()
+    {
+        intSet.SymmetricExceptWith(intSetB);
     }
 
     [Benchmark()]
@@ -177,9 +195,15 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_UnionWith()
+    public void IntSet_UnionWith_Span()
     {
         intSet.UnionWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void IntSet_UnionWith_IntSet()
+    {
+        intSet.UnionWith(intSetB);
     }
 
     [Benchmark()]

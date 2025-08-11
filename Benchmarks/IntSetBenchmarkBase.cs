@@ -7,7 +7,7 @@ public abstract class IntSetBenchmarkBase
     public int N = 10000;
 
     protected int[] aKeys, bKeys, lookupKeys;
-    protected IntSet intSet;
+    protected IntSet intSet, intSetB;
     protected HashSet<int> hashSet;
     protected DenseIdMap DenseIdMap;
     
@@ -25,6 +25,7 @@ public abstract class IntSetBenchmarkBase
             lookupKeys[i] = rng.Next(0, N);
         }
         intSet = new IntSet(aKeys);
+        intSetB = new IntSet(bKeys);
         hashSet = new HashSet<int>(aKeys);
         DenseIdMap = new DenseIdMap(aKeys);
     }
