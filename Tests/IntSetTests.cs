@@ -285,7 +285,7 @@ public class IntSetTests
         Assert.That(_set.Remove(0), Is.False); // Already removed
     }    
     [Test]
-    public void LargNumbers_HandledCorrectly()
+    public void LargeNumbers_HandledCorrectly()
     {
         // Zero is a special case that should be handled correctly
         Assert.That(_set.Add(-88812381), Is.True);
