@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Diagnostics;
 
 namespace IntSet;
 
@@ -30,7 +31,9 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
     private ulong[] _pages;
     private int _pageCount;
     private int _count;
-    private int _initialKey;
+
+    private int _valueOffset;
+
     private bool _isInitialized;
 
     public int Count => _count;
@@ -39,7 +42,7 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
     {
         _pages = new ulong[16];
         _pageCount = 0;
-        _initialKey = 0;
+        _valueOffset = 0;
         _isInitialized = false;
     }
 
@@ -47,7 +50,7 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
     {
         _pages = new ulong[16];
         _pageCount = 0;
-        _initialKey = 0;
+        _valueOffset = 0;
         _isInitialized = false;
         UnionWith(values);
     }
@@ -65,63 +68,66 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Add(int value)
     {
-        _initialKey = _isInitialized ? _initialKey : value;
-        _isInitialized = true;
-        value -= _initialKey; // Used to normalize future values to start from closer to zero
-        var key = ZigZagEncode(value);
-        // Which page does this key belong to? Each page has 64 bits, so we can store 64 keys per page.
-        var p = (int) (key >> PageBits);
-        // which bit in the page do we set for this key?
-        var bit = (int) (key & PageMask);
-        // create the mask that we |= to set the bit
-        var mask = 1UL << bit;
+        // is this the first value being added?
+        if (!_isInitialized)
+        {
+            // The goal here is to center the key space around the smallest multiple of 64,
+            // to reduce number pages needed.
+            var smallestMultipleOf64 = value & ~PageMask;
+            _valueOffset = smallestMultipleOf64;
+            _isInitialized = true;
+        }
+
+        // convert the value to a key, which is a uint integer
+        GetPageAndBit(value, out var pageIndex, out var bit, out var mask);
         // make sure the page exists in our _pages array
-        EnsurePage(p);
-        var page = _pages[p];
-        _pages[p] |= mask;
+        EnsurePage(pageIndex);
+        if (IsSet(pageIndex, mask)) return false;
+        SetBit(pageIndex, mask);
         // if we have created a new page, increment pageCount
-        _pageCount = p >= _pageCount ? p + 1 : _pageCount;
-        // return true if we set the bit, false if it was already set
-        if ((page & mask) != 0)
-            return false;
+        _pageCount = pageIndex >= _pageCount ? pageIndex + 1 : _pageCount;
         _count++;
         return true;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void SetBit(int p, ulong mask) => _pages[p] |= mask;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void UnSetBit(int p, ulong mask) => _pages[p] &= ~mask;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private bool IsSet(int p, ulong mask) => (_pages[p] & mask) != 0;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void GetPageAndBit(int value, out int pageIndex, out int bitIndex, out ulong mask)
+    {
+        var key = ZigZagEncode(value - _valueOffset);
+        pageIndex = (int) (key >> PageBits);
+        bitIndex = (int) (key & PageMask);
+        mask = 1ul << bitIndex;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Contains(int value)
     {
-        value -= _initialKey;
-        var key = ZigZagEncode(value);
-        // get page
-        var p = (int) (key >> PageBits);
-        if (p >= _pageCount) return false;
-        // get bit position
-        var bit = (int) (key & PageMask);
-        var mask = (1UL << bit);
-        return p < _pages.Length && (_pages[p] & mask) != 0;
+        GetPageAndBit(value, out var pageIndex, out var bitIndex, out var mask);
+        return pageIndex < _pageCount && IsSet(pageIndex, mask);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool Remove(int value)
     {
-        value -= _initialKey;
-        var key = ZigZagEncode(value);
-        // get page
-        var p = (int) (key >> PageBits);
-        if (p >= _pageCount) return false;
-        // get bit position
-        var bit = (int) (key & PageMask);
-        var mask = 1UL << bit;
-        var page = _pages[p];
-        if ((page & mask) == 0)
-            return false;
+        GetPageAndBit(value, out var pageIndex, out var bitIndex, out var mask);
+        if (pageIndex >= _pageCount) return false;
+        if (IsSet(pageIndex, mask))
+        {
+            UnSetBit(pageIndex, mask);
+            _count--;
+            return true;
+        }
 
-        var newPage = page & ~mask;
-        _pages[p] = newPage;
-
-        _count--;
-        return true;
+        return false;
     }
 
     public void IntersectWith(Span<int> span)
@@ -132,38 +138,19 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         if (pageCount > MaxPageCount)
             masks.Clear();
 
+        // Collapse duplicate values in the span into masks for each page.
         foreach (var value in span)
         {
-            var v = value - _initialKey;
-            var key = ZigZagEncode(v);
-            // get page
-            var p = (int) (key >> PageBits);
-            if (p >= pageCount) continue;
-            // get bit position
-            var bit = (int) (key & PageMask);
-            var mask = 1UL << bit;
-            masks[p] |= mask;
+            GetPageAndBit(value, out var pageIndex, out var bitIndex, out var mask);
+            if (pageIndex >= pageCount) continue;
+            masks[pageIndex] |= mask;
         }
 
         var pages = _pages;
         for (var i = 0; i < _pageCount; i++)
             pages[i] &= masks[i];
 
-        var newCount = 0;
-
-        for (var i = 0; i < _pageCount; i++)
-        {
-            // intersect the page
-            var bits = pages[i] & masks[i];
-            pages[i] = bits;
-
-            if (bits != 0)
-            {
-                newCount += PopCount(bits);
-            }
-        }
-
-        _count = newCount;
+        Recount();
     }
 
     public void UnionWith(Span<int> span)
@@ -184,57 +171,224 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
 
     public void SymmetricExceptWith(Span<int> span)
     {
-        var maxPage = _pageCount;
+        var pageCount = _pageCount;
+        var masks = pageCount > MaxPageCount ? new ulong[pageCount] : stackalloc ulong[pageCount];
+        if (pageCount > MaxPageCount)
+            masks.Clear();
+
+        // Collapse duplicate values in the span into masks for each page.
         foreach (var value in span)
         {
-            var key = ZigZagEncode(value - _initialKey);
-            var p = (int) (key >> PageBits);
-            if (p + 1 > maxPage) maxPage = p + 1;
+            GetPageAndBit(value, out var pageIndex, out var bitIndex, out var mask);
+            if (pageIndex >= pageCount) 
+                Add(value);
+            else 
+                masks[pageIndex] |= mask;
         }
 
         var pages = _pages;
-        if (maxPage > pages.Length)
-            Array.Resize(ref pages, maxPage);
-        _pageCount = maxPage;
-
-        var masks = maxPage > MaxPageCount ? new ulong[maxPage] : stackalloc ulong[maxPage];
-        if (maxPage > MaxPageCount)
-            masks.Clear();
-
-        foreach (var value in span)
+        var minCount = Math.Min(_pageCount, masks.Length);
+        for (var i = 0; i < minCount; i++)
         {
-            var key = ZigZagEncode(value - _initialKey);
-            var p = (int) (key >> PageBits);
-            var bit = (int) (key & PageMask);
-            masks[p] |= 1UL << bit;
+            pages[i] ^= masks[i]; // XOR the masks with the current pages
         }
 
-        var newCount = 0;
-
-        for (var p = 0; p < maxPage; p++)
-        {
-            var oldBits = pages[p];
-            var flip = masks[p];
-            if (flip != 0UL)
-                pages[p] = oldBits ^ flip;
-
-            var bits = pages[p];
-            if (bits != 0UL)
-            {
-                newCount += PopCount(bits);
-            }
-        }
-
-        _count = newCount;
+        Recount();
     }
 
-    public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount, _initialKey);
+    public void Clear()
+    {
+        for (var i = 0; i < _pageCount; i++)
+            _pages[i] = 0ul;
+        _pageCount = 0;
+        _count = 0;
+        _valueOffset = 0;
+        _isInitialized = false;
+    }
+
+    public void UnionWith(IReadOnlyIntSet other)
+    {
+        UnionWith((IntSet) other);
+    }
+
+    public void UnionWith(IntSet other)
+    {
+        if (other._count == 0) return;
+        if (_count == 0)
+        {
+            CopyOtherSet(other);
+            return;
+        }
+
+        // If the page offsets are the same, we can just merge the pages
+        if (other._valueOffset == _valueOffset)
+        {
+            if (_pageCount < other._pageCount)
+            {
+                Array.Resize(ref _pages, other._pageCount);
+                Array.Copy(other._pages, 0, _pages, 0, other._pageCount);
+                _pageCount = other._pageCount;
+            }
+
+            for (var i = 0; i < other._pageCount; i++)
+            {
+                _pages[i] |= other._pages[i];
+            }
+
+            Recount();
+        }
+        else if (other._valueOffset > _valueOffset)
+        {
+            // other set has a higher value offset, so we iterate the other set of pages
+            // and map them to the current set's pages.
+            var offsetDiff = other._valueOffset - _valueOffset;
+            for (var i = 0; i < other._pageCount; i++)
+            {
+                var localPageIndex = i + (offsetDiff >> PageBits);
+                EnsurePage(localPageIndex);
+                _pages[localPageIndex] |= other._pages[i];
+            }
+
+            _pageCount = Math.Max(_pageCount, other._pageCount + (offsetDiff >> PageBits));
+            _count += other._count;
+        }
+        else if (other._valueOffset < _valueOffset)
+        {
+            foreach (var otherValue in other)
+            {
+                Add(otherValue);
+            }
+
+            Recount();
+        }
+    }
+
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private void Recount()
+    {
+        var pages = _pages;
+        var count = 0;
+        for (int i = 0, end = _pageCount; i < end; i++)
+            if (pages[i] != 0UL)
+                count += PopCount(pages[i]);
+        _count = count;
+    }
+
+    private void CopyOtherSet(IntSet other)
+    {
+        _valueOffset = other._valueOffset;
+        _isInitialized = other._isInitialized;
+        _count = other._count;
+        _pageCount = other._pageCount;
+
+        if (other._pageCount > _pages.Length)
+            Array.Resize(ref _pages, other._pageCount);
+
+        Array.Copy(other._pages, _pages, other._pageCount);
+    }
+
+
+    public void IntersectWith(IntSet other)
+    {
+        if (_count == 0 || other._count == 0)
+        {
+            Clear();
+            return;
+        }
+
+        if (_valueOffset == other._valueOffset)
+        {
+            // both sets have the same value offset, we can just intersect the pages
+            for (var i = 0; i < _pageCount && i < other._pageCount; i++)
+            {
+                _pages[i] &= other._pages[i];
+            }
+
+            // Count the bits set in the pages
+            _count = 0;
+            for (var i = 0; i < _pageCount; i++)
+                _count += PopCount(_pages[i]);
+        }
+        else if (other._valueOffset > _valueOffset)
+        {
+            // other set has a higher value offset, so we iterate the other set of pages
+            // and map them to the current set's pages.
+            var offsetDiff = other._valueOffset - _valueOffset;
+            for (var i = 0; i < other._pageCount; i++)
+            {
+                var localPageIndex = i + (offsetDiff >> PageBits);
+                EnsurePage(localPageIndex);
+                _pages[localPageIndex] &= other._pages[i];
+            }
+
+            _pageCount = Math.Max(_pageCount, other._pageCount + (offsetDiff >> PageBits));
+            _count += other._count;
+        }
+        else if (other._valueOffset < _valueOffset)
+        {
+            IntersectWith(other.ToArray());
+        }
+    }
+
+    public void ExceptWith(IntSet other)
+    {
+        if (_count == 0 || other._count == 0) return;
+
+        if (_valueOffset == other._valueOffset)
+        {
+            // both sets have the same value offset, we can just intersect the pages
+            for (var i = 0; i < _pageCount && i < other._pageCount; i++)
+            {
+                _pages[i] &= ~other._pages[i];
+            }
+
+            // Count the bits set in the pages
+            _count = 0;
+            for (var i = 0; i < _pageCount; i++)
+                _count += PopCount(_pages[i]);
+        }
+        else if (other._valueOffset > _valueOffset)
+        {
+            // other set has a higher value offset, so we iterate the other set of pages
+            // and map them to the current set's pages.
+            var offsetDiff = other._valueOffset - _valueOffset;
+            for (var i = 0; i < other._pageCount; i++)
+            {
+                var localPageIndex = i + (offsetDiff >> PageBits);
+                EnsurePage(localPageIndex);
+                _pages[localPageIndex] &= ~other._pages[i];
+            }
+
+            _pageCount = Math.Max(_pageCount, other._pageCount + (offsetDiff >> PageBits));
+            _count += other._count;
+        }
+        else if (other._valueOffset < _valueOffset)
+        {
+            foreach (var otherValue in other)
+                Remove(otherValue);
+        }
+    }
+
+    public void SymmetricExceptWith(IntSet other)
+    {
+        if (other._count == 0) return;
+        if (_count == 0)
+        {
+            UnionWith(other);
+            return;
+        }
+
+        SymmetricExceptWith(other.ToArray());
+    }
+
+    public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount, _valueOffset);
     IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
-    
+
     public Enumerator GetEnumeratorForPageRange(int startPage, int endPage)
     {
-        return new Enumerator(_pages, startPage, endPage, _initialKey);
+        return new Enumerator(_pages, startPage, endPage, _valueOffset);
     }
 
     public struct Enumerator : IEnumerator<int>
@@ -242,16 +396,16 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         private readonly ulong[] _pages;
         private readonly int _pageCount;
         private int _currentPageIndex;
-        private ulong _currentBits;
+        private ulong _currentPage;
         private int _currentPageBase;
-        private readonly int _initialKey;
+        private readonly int _valueOffset;
 
         public Enumerator GetEnumerator() => this;
 
         public void Reset()
         {
             _currentPageIndex = -1;
-            _currentBits = 0;
+            _currentPage = 0;
             _currentPageBase = 0;
             Current = 0;
         }
@@ -259,36 +413,36 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         object? IEnumerator.Current { get; }
         public int Current { get; private set; }
 
-        internal Enumerator(ulong[] pages, int pageCount, int initialKey)
+        internal Enumerator(ulong[] pages, int pageCount, int valueOffset)
         {
             _pages = pages;
             _pageCount = pageCount;
             _currentPageIndex = -1;
-            _currentBits = 0;
+            _currentPage = 0;
             _currentPageBase = 0;
-            _initialKey = initialKey;
+            _valueOffset = valueOffset;
             Current = 0;
         }
-        
-        internal Enumerator(ulong[] pages, int startPage, int endPage, int initialKey)
+
+        internal Enumerator(ulong[] pages, int startPage, int endPage, int valueOffset)
         {
             _pages = pages;
             _pageCount = endPage; // Exclusive end
             _currentPageIndex = startPage - 1; // Start before first page
-            _currentBits = 0;
+            _currentPage = 0;
             _currentPageBase = 0;
-            _initialKey = initialKey;
+            _valueOffset = valueOffset;
             Current = 0;
         }
 
         public bool MoveNext()
         {
             // Extract remaining bits from current page
-            if (_currentBits != 0)
+            if (_currentPage != 0)
             {
-                var tz = TrailingZeroCount(_currentBits);
-                _currentBits &= _currentBits - 1; // Clear lowest bit
-                Current = ZigZagDecode((uint) (_currentPageBase | tz)) + _initialKey;
+                var tz = TrailingZeroCount(_currentPage);
+                _currentPage &= _currentPage - 1; // Clear lowest bit
+                Current = ZigZagDecode((uint) (_currentPageBase | tz)) + _valueOffset;
                 return true;
             }
 
@@ -296,12 +450,15 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
             var pageCount = _pageCount;
             while (++_currentPageIndex < pageCount)
             {
-                _currentBits = _pages[_currentPageIndex];
-                if (_currentBits == 0) continue;
+                _currentPage = _pages[_currentPageIndex];
+                if (_currentPage == 0) continue;
+                // currentPageBase is the base value for the current page, a multiple of 64
                 _currentPageBase = _currentPageIndex << PageBits;
-                var tz = TrailingZeroCount(_currentBits);
-                _currentBits &= _currentBits - 1; // Clear lowest bit
-                Current = ZigZagDecode((uint) (_currentPageBase | tz)) + _initialKey;
+                // any bit position set in the current page needs be added to currentPageBase
+                // to get the the original value
+                var bitPosition = TrailingZeroCount(_currentPage);
+                _currentPage &= _currentPage - 1; // Clear lowest bit
+                Current = ZigZagDecode((uint) (_currentPageBase | bitPosition)) + _valueOffset;
                 return true;
             }
 
@@ -370,463 +527,5 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
     public List<int> ToList()
     {
         return new List<int>(ToArray());
-    }
-
-    public void Clear()
-    {
-        for (var i = 0; i < _pageCount; i++)
-            _pages[i] = 0ul;
-        _pageCount = 0;
-        _count = 0;
-        _initialKey = 0;
-        _isInitialized = false;
-    }
-
-    public void UnionWith(IReadOnlyIntSet other)
-    {
-        UnionWith((IntSet) other);
-    }
-
-    public void UnionWith(IntSet other)
-    {
-        if (other._count == 0) return;
-        if (_count == 0)
-        {
-            // Fast path: copy everything from other
-            _initialKey = other._initialKey;
-            _isInitialized = other._isInitialized;
-            _count = other._count;
-            _pageCount = other._pageCount;
-
-            if (other._pageCount > _pages.Length)
-                Array.Resize(ref _pages, other._pageCount);
-
-            Array.Copy(other._pages, _pages, other._pageCount);
-            return;
-        }
-
-        // Handle different initial keys by normalizing to the smaller one
-        var keyDiff = other._initialKey - _initialKey;
-        if (keyDiff != 0)
-        {
-            if (keyDiff < 0)
-            {
-                // Other set has smaller initial key, shift this set
-                ShiftPages(-keyDiff);
-                _initialKey = other._initialKey;
-            }
-            else
-            {
-                // This set has smaller initial key, need to shift other's pages during union
-                UnionWithOffset(other, keyDiff);
-                return;
-            }
-        }
-
-        // Same initial keys - direct page union
-        var maxPageCount = Math.Max(_pageCount, other._pageCount);
-        if (maxPageCount > _pages.Length)
-            Array.Resize(ref _pages, maxPageCount);
-
-        var newCount = 0;
-        for (var i = 0; i < maxPageCount; i++)
-        {
-            var oldBits = i < _pageCount ? _pages[i] : 0UL;
-            var otherBits = i < other._pageCount ? other._pages[i] : 0UL;
-            var newBits = oldBits | otherBits;
-            _pages[i] = newBits;
-
-            if (newBits != 0UL)
-                newCount += PopCount(newBits);
-        }
-
-        _pageCount = maxPageCount;
-        _count = newCount;
-    }
-
-    private void ShiftPages(int keyOffset)
-    {
-        var pageOffset = keyOffset >> PageBits;
-        var bitOffset = keyOffset & PageMask;
-
-        if (bitOffset == 0)
-        {
-            // Simple page-aligned shift
-            var newPageCount = _pageCount + pageOffset;
-            if (newPageCount > _pages.Length)
-                Array.Resize(ref _pages, newPageCount);
-
-            Array.Copy(_pages, 0, _pages, pageOffset, _pageCount);
-            Array.Clear(_pages, 0, pageOffset);
-            _pageCount = newPageCount;
-        }
-        else
-        {
-            // Bit-level shift across page boundaries
-            var newPageCount = _pageCount + pageOffset + 1;
-            if (newPageCount > _pages.Length)
-                Array.Resize(ref _pages, newPageCount);
-
-            var rightShift = PageSize - bitOffset;
-            ulong carry = 0;
-
-            for (var i = _pageCount - 1; i >= 0; i--)
-            {
-                var currentBits = _pages[i];
-                _pages[i + pageOffset + 1] = (currentBits >> rightShift) | carry;
-                carry = currentBits << bitOffset;
-            }
-
-            _pages[pageOffset] = carry;
-
-            Array.Clear(_pages, 0, pageOffset);
-            _pageCount = newPageCount;
-        }
-    }
-
-    private void UnionWithOffset(IntSet other, int keyOffset)
-    {
-        var pageOffset = keyOffset >> PageBits;
-        var bitOffset = keyOffset & PageMask;
-
-        var maxPageCount = Math.Max(_pageCount, other._pageCount + pageOffset + 1);
-        if (maxPageCount > _pages.Length)
-            Array.Resize(ref _pages, maxPageCount);
-
-        if (bitOffset == 0)
-        {
-            // Page-aligned union
-            for (var i = 0; i < other._pageCount; i++)
-            {
-                _pages[i + pageOffset] |= other._pages[i];
-            }
-        }
-        else
-        {
-            // Bit-shifted union
-            var rightShift = PageSize - bitOffset;
-            ulong carry = 0;
-
-            for (var i = 0; i < other._pageCount; i++)
-            {
-                var otherBits = other._pages[i];
-                _pages[i + pageOffset] |= (otherBits << bitOffset) | carry;
-                carry = otherBits >> rightShift;
-            }
-
-            if (carry != 0)
-                _pages[other._pageCount + pageOffset] |= carry;
-        }
-
-        // Recount total bits
-        var newCount = 0;
-        _pageCount = maxPageCount;
-        for (var i = 0; i < _pageCount; i++)
-        {
-            if (_pages[i] != 0UL)
-                newCount += PopCount(_pages[i]);
-        }
-
-        _count = newCount;
-    }
-
-    private void SymmetricExceptWithSameKey(IntSet other)
-    {
-        var maxPageCount = Math.Max(_pageCount, other._pageCount);
-        if (maxPageCount > _pages.Length)
-            Array.Resize(ref _pages, maxPageCount);
-
-        var newCount = 0;
-        for (var i = 0; i < maxPageCount; i++)
-        {
-            var thisBits = i < _pageCount ? _pages[i] : 0UL;
-            var otherBits = i < other._pageCount ? other._pages[i] : 0UL;
-            var xorResult = thisBits ^ otherBits;
-            _pages[i] = xorResult;
-
-            if (xorResult != 0UL)
-                newCount += PopCount(xorResult);
-        }
-
-        _pageCount = maxPageCount;
-        _count = newCount;
-    }
-
-    private void SymmetricExceptWithOffset(IntSet other, int keyOffset)
-    {
-        var pageOffset = keyOffset >> PageBits;
-        var bitOffset = keyOffset & PageMask;
-
-        var maxPageCount = Math.Max(_pageCount, other._pageCount + pageOffset + 1);
-        if (maxPageCount > _pages.Length)
-            Array.Resize(ref _pages, maxPageCount);
-
-        if (bitOffset == 0)
-        {
-            // Page-aligned symmetric difference
-            for (var i = 0; i < other._pageCount; i++)
-            {
-                _pages[i + pageOffset] ^= other._pages[i];
-            }
-        }
-        else
-        {
-            // Bit-shifted symmetric difference
-            var rightShift = PageSize - bitOffset;
-            ulong carry = 0;
-
-            for (var i = 0; i < other._pageCount; i++)
-            {
-                var otherBits = other._pages[i];
-                _pages[i + pageOffset] ^= (otherBits << bitOffset) | carry;
-                carry = otherBits >> rightShift;
-            }
-
-            if (carry != 0)
-                _pages[other._pageCount + pageOffset] ^= carry;
-        }
-
-        // Recount total bits
-        var newCount = 0;
-        _pageCount = maxPageCount;
-        for (var i = 0; i < _pageCount; i++)
-        {
-            if (_pages[i] != 0UL)
-                newCount += PopCount(_pages[i]);
-        }
-
-        _count = newCount;
-    }
-
-    private void ExceptWithSameKey(IntSet other)
-    {
-        var newCount = 0;
-        var minPageCount = Math.Min(_pageCount, other._pageCount);
-
-        // Subtract overlapping pages
-        for (var i = 0; i < minPageCount; i++)
-        {
-            var subtracted = _pages[i] & ~other._pages[i];
-            _pages[i] = subtracted;
-            if (subtracted != 0UL)
-                newCount += PopCount(subtracted);
-        }
-
-        // Count remaining pages beyond other's range
-        for (var i = minPageCount; i < _pageCount; i++)
-        {
-            if (_pages[i] != 0UL)
-                newCount += PopCount(_pages[i]);
-        }
-
-        _count = newCount;
-    }
-
-    private void ExceptWithOffset(IntSet other, int keyOffset)
-    {
-        var pageOffset = keyOffset >> PageBits;
-        var bitOffset = keyOffset & PageMask;
-        var newCount = 0;
-
-        if (bitOffset == 0)
-        {
-            // Page-aligned subtraction
-            var startPage = Math.Max(0, pageOffset);
-            var endPage = Math.Min(_pageCount, other._pageCount + pageOffset);
-
-            // Count pages before overlap (unchanged)
-            for (var i = 0; i < startPage; i++)
-            {
-                if (_pages[i] != 0UL)
-                    newCount += PopCount(_pages[i]);
-            }
-
-            // Subtract overlapping pages
-            for (var i = startPage; i < endPage; i++)
-            {
-                var otherIndex = i - pageOffset;
-                var subtracted = _pages[i] & ~other._pages[otherIndex];
-                _pages[i] = subtracted;
-                if (subtracted != 0UL)
-                    newCount += PopCount(subtracted);
-            }
-
-            // Count pages after overlap (unchanged)
-            for (var i = endPage; i < _pageCount; i++)
-            {
-                if (_pages[i] != 0UL)
-                    newCount += PopCount(_pages[i]);
-            }
-        }
-        else
-        {
-            // Bit-shifted subtraction
-            var rightShift = PageSize - bitOffset;
-
-            for (var i = 0; i < _pageCount; i++)
-            {
-                var otherBits = 0UL;
-                var otherIndex = i - pageOffset;
-
-                if (otherIndex >= 0 && otherIndex < other._pageCount)
-                    otherBits |= other._pages[otherIndex] << bitOffset;
-
-                if (otherIndex - 1 >= 0 && otherIndex - 1 < other._pageCount)
-                    otherBits |= other._pages[otherIndex - 1] >> rightShift;
-
-                var subtracted = _pages[i] & ~otherBits;
-                _pages[i] = subtracted;
-                if (subtracted != 0UL)
-                    newCount += PopCount(subtracted);
-            }
-        }
-
-        _count = newCount;
-    }
-
-    private void IntersectWithSameKey(IntSet other)
-    {
-        var minPageCount = Math.Min(_pageCount, other._pageCount);
-        var newCount = 0;
-
-        // Intersect overlapping pages
-        for (var i = 0; i < minPageCount; i++)
-        {
-            var intersected = _pages[i] & other._pages[i];
-            _pages[i] = intersected;
-            if (intersected != 0UL)
-                newCount += PopCount(intersected);
-        }
-
-        // Clear pages beyond other's range
-        for (var i = minPageCount; i < _pageCount; i++)
-            _pages[i] = 0UL;
-
-        _pageCount = minPageCount;
-        _count = newCount;
-    }
-
-    private void IntersectWithOffset(IntSet other, int keyOffset)
-    {
-        var pageOffset = keyOffset >> PageBits;
-        var bitOffset = keyOffset & PageMask;
-        var newCount = 0;
-
-        if (bitOffset == 0)
-        {
-            // Page-aligned intersection
-            var startPage = Math.Max(0, pageOffset);
-            var endPage = Math.Min(_pageCount, other._pageCount + pageOffset);
-
-            // Clear pages before overlap
-            for (var i = 0; i < startPage; i++)
-                _pages[i] = 0UL;
-
-            // Intersect overlapping pages
-            for (var i = startPage; i < endPage; i++)
-            {
-                var otherIndex = i - pageOffset;
-                var intersected = _pages[i] & other._pages[otherIndex];
-                _pages[i] = intersected;
-                if (intersected != 0UL)
-                    newCount += PopCount(intersected);
-            }
-
-            // Clear pages after overlap
-            for (var i = endPage; i < _pageCount; i++)
-                _pages[i] = 0UL;
-        }
-        else
-        {
-            // Bit-shifted intersection
-            var rightShift = PageSize - bitOffset;
-
-            for (var i = 0; i < _pageCount; i++)
-            {
-                var otherBits = 0UL;
-                var otherIndex = i - pageOffset;
-
-                if (otherIndex >= 0 && otherIndex < other._pageCount)
-                    otherBits |= other._pages[otherIndex] << bitOffset;
-
-                if (otherIndex - 1 >= 0 && otherIndex - 1 < other._pageCount)
-                    otherBits |= other._pages[otherIndex - 1] >> rightShift;
-
-                var intersected = _pages[i] & otherBits;
-                _pages[i] = intersected;
-                if (intersected != 0UL)
-                    newCount += PopCount(intersected);
-            }
-        }
-
-        _count = newCount;
-    }
-
-    public void IntersectWith(IntSet other)
-    {
-        if (_count == 0 || other._count == 0)
-        {
-            Clear();
-            return;
-        }
-
-        var keyDiff = other._initialKey - _initialKey;
-        if (keyDiff == 0)
-        {
-            // Same initial keys - direct page intersection
-            IntersectWithSameKey(other);
-        }
-        else
-        {
-            // Different initial keys - need offset calculation
-            IntersectWithOffset(other, keyDiff);
-        }
-    }
-
-    public void ExceptWith(IntSet other)
-    {
-        if (_count == 0 || other._count == 0) return;
-
-        var keyDiff = other._initialKey - _initialKey;
-        if (keyDiff == 0)
-        {
-            // Same initial keys - direct page subtraction
-            ExceptWithSameKey(other);
-        }
-        else
-        {
-            // Different initial keys - need offset calculation
-            ExceptWithOffset(other, keyDiff);
-        }
-    }
-
-    public void SymmetricExceptWith(IntSet other)
-    {
-        if (other._count == 0) return;
-        if (_count == 0)
-        {
-            UnionWith(other);
-            return;
-        }
-
-        var keyDiff = other._initialKey - _initialKey;
-        if (keyDiff != 0)
-        {
-            if (keyDiff < 0)
-            {
-                // Other set has smaller initial key, shift this set
-                ShiftPages(-keyDiff);
-                _initialKey = other._initialKey;
-            }
-            else
-            {
-                // This set has smaller initial key, need to shift other's pages during operation
-                SymmetricExceptWithOffset(other, keyDiff);
-                return;
-            }
-        }
-
-        // Same initial keys - direct page XOR
-        SymmetricExceptWithSameKey(other);
     }
 }

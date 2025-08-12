@@ -14,6 +14,12 @@ public class UnionWithBenchmarks : IntSetBenchmarkBase
     {
         intSet.UnionWith(bKeys);
     }
+    
+    [Benchmark]
+    public void IntSet_UnionWith_IntSet()
+    {
+        intSet.UnionWith(intSetB);
+    }
 
     [Benchmark(Baseline = true)]
     public void HashSet_UnionWith()

@@ -24,6 +24,8 @@ public abstract class IntSetBenchmarkBase
             bKeys[i] = rng.Next(0, N);
             lookupKeys[i] = rng.Next(0, N);
         }
+
+        aKeys[0] = bKeys[0];
         intSet = new IntSet(aKeys);
         intSetB = new IntSet(bKeys);
         hashSet = new HashSet<int>(aKeys);

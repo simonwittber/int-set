@@ -17,6 +17,33 @@ public class IdSetHashSetComparisonTests
         _intSet = new IntSet();
         _hashSet = new HashSet<int>();
     }
+
+    IEnumerable<(int[], int[])> TestArrays()
+    {
+        int[] A;
+        int[] B;
+        // two arrays with same starting value
+        A = new[] {12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0};
+        B = new[] {12, 1, 2, 3, -82, 11, 54, 27, 901, 324 };
+        yield return (A, B);
+        A = new[] {98, 12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0};
+        B = new[] {12, 1, 2, 3, -82, 11, 54, 27, 901, 324 };
+        yield return (A, B);
+        A = new[] {-13, 12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0};
+        B = new[] {1002, 1, 2, 3, -82, 11, 54, 27, 901, 324 };
+        yield return (A, B);
+    }
+    
+    void Shuffle<T>(IList<T> list)
+    {
+        var rng = new Random(123);
+        int n = list.Count;
+        while (n > 1)
+        {
+            int k = rng.Next(n--);
+            (list[n], list[k]) = (list[k], list[n]);
+        }
+    }
     
     [Test]
     public void CheckAddAndContains()
@@ -298,6 +325,124 @@ public class IdSetHashSetComparisonTests
         
        Assert.That(_intSet.ToList(), Is.EquivalentTo(_hashSet));
     }
+    
+    [Test]
+    public void CheckUnionWith_IntSet_IntSet_Shuffled()
+    {
+        foreach (var (a,b) in TestArrays())
+        {
+            var truth = new HashSet<int>(a);
 
+            var intSetA = new IntSet(a);
+            Assert.That(intSetA.ToList(), Is.EquivalentTo(truth));
+            intSetA.UnionWith(b);
+
+            Shuffle(a);
+            Shuffle(b);
+
+            var intSetB = new IntSet(a);
+            Assert.That(intSetB.ToList(), Is.EquivalentTo(truth));
+            intSetB.UnionWith(b);
+
+            var intSetC = new IntSet(a);
+            intSetC.UnionWith(new IntSet(b));
+
+            Shuffle(a);
+            Shuffle(b);
+
+            var intSetD = new IntSet(a);
+            Assert.That(intSetD.ToList(), Is.EquivalentTo(truth));
+
+            intSetD.UnionWith(new IntSet(b));
+
+            truth.UnionWith(b);
+            var arrayFirstValues = $"{a[0] & ~63}, {b[0] & ~63}";
+            Assert.That(intSetA.Count, Is.EqualTo(truth.Count), arrayFirstValues);
+            Assert.That(intSetA.ToList(), Is.EquivalentTo(truth), arrayFirstValues);
+            Assert.That(intSetB.Count, Is.EqualTo(truth.Count), arrayFirstValues);
+            Assert.That(intSetB.ToList(), Is.EquivalentTo(truth), arrayFirstValues);
+            // Assert.That(intSetC.Count, Is.EqualTo(truth.Count), arrayFirstValues);
+            Assert.That(intSetC.ToList(), Is.EquivalentTo(truth), arrayFirstValues);
+            Assert.That(intSetD.Count, Is.EqualTo(truth.Count), arrayFirstValues);
+            Assert.That(intSetD.ToList(), Is.EquivalentTo(truth), arrayFirstValues);
+        }
+    }
+
+    [Test]
+    public void CheckIntersectWith_IntSet_IntSet_Shuffled()
+    {
+        foreach (var (a,b) in TestArrays())
+        {
+           
+            var truth = new HashSet<int>(a);
+
+            var intSetA = new IntSet(a);
+            Assert.That(intSetA.ToList(), Is.EquivalentTo(truth));
+            intSetA.IntersectWith(b);
+
+            Shuffle(a);
+            Shuffle(b);
+
+            var intSetB = new IntSet(a);
+            Assert.That(intSetB.ToList(), Is.EquivalentTo(truth));
+            intSetB.IntersectWith(b);
+
+            var intSetC = new IntSet(a);
+            intSetC.IntersectWith(new IntSet(b));
+
+            Shuffle(a);
+            Shuffle(b);
+
+            var intSetD = new IntSet(a);
+            Assert.That(intSetD.ToList(), Is.EquivalentTo(truth));
+
+            intSetD.IntersectWith(new IntSet(b));
+
+            truth.IntersectWith(b);
+
+            Assert.That(intSetA.Count, Is.EqualTo(truth.Count));
+            Assert.That(intSetA.ToList(), Is.EquivalentTo(truth));
+            Assert.That(intSetB.Count, Is.EqualTo(truth.Count));
+            Assert.That(intSetB.ToList(), Is.EquivalentTo(truth));
+            Assert.That(intSetC.Count, Is.EqualTo(truth.Count));
+            Assert.That(intSetC.ToList(), Is.EquivalentTo(truth));
+            Assert.That(intSetD.Count, Is.EqualTo(truth.Count));
+            Assert.That(intSetD.ToList(), Is.EquivalentTo(truth));
+        }
+    }
+    
+    [Test]
+    public void CheckExceptWith_IntSet_IntSet_Shuffled()
+    {
+        var a = new[] { 0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000 };
+        var b = new[] {0, 1, 5, 10, 12312312};
+        
+        _intSet.UnionWith(new IntSet(a));
+        _intSet.ExceptWith(new IntSet(b));
+        
+        Shuffle(a);
+        Shuffle(b);
+        var intSetB = new IntSet(a);
+        intSetB.ExceptWith(new IntSet(b));
+        
+        Assert.That(intSetB.ToList(), Is.EquivalentTo(_intSet.ToList()));
+    }
+    
+    [Test]
+    public void CheckSymmetricExceptWith_IntSet_IntSet_Shuffled()
+    {
+        var a = new[] { 0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000 };
+        var b = new[] {0, 1, 5, 10, 12312312};
+        
+        _intSet.UnionWith(new IntSet(a));
+        _intSet.SymmetricExceptWith(new IntSet(b));
+        
+        Shuffle(a);
+        Shuffle(b);
+        var intSetB = new IntSet(a);
+        intSetB.SymmetricExceptWith(new IntSet(b));
+        
+        Assert.That(intSetB.ToList(), Is.EquivalentTo(_intSet.ToList()));
+    }
    
 }

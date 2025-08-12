@@ -13,6 +13,12 @@ public class IntersectWithBenchmarks : IntSetBenchmarkBase
     {
         intSet.IntersectWith(bKeys);
     }
+    
+    [Benchmark]
+    public void IntSet_IntersectWith_IntSet()
+    {
+        intSet.IntersectWith(intSetB);
+    }
 
     [Benchmark(Baseline = true)]
     public void HashSet_IntersectWith()
