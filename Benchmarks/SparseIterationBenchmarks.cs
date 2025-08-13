@@ -13,10 +13,10 @@ public class SparseIterationBenchmarks
 
     private int[] aKeys, bKeys;
 
-    private IntSet intSet;
+    private IntSetPaged _intSetPaged;
     HashSet<int> hashSet;
     
-    private IntSet sparseIntSet;
+    private IntSetPaged _sparseIntSetPaged;
     HashSet<int> sparseHashSet;
     
     [IterationSetup]
@@ -31,7 +31,7 @@ public class SparseIterationBenchmarks
             aKeys[i] = rng.Next(0, N);
         }
 
-        intSet = new IntSet(aKeys);
+        _intSetPaged = new IntSetPaged(aKeys);
         hashSet = new HashSet<int>(aKeys);
         
         bKeys = new int[N];
@@ -40,7 +40,7 @@ public class SparseIterationBenchmarks
         {
             bKeys[i] = rng.Next(-N*10, +N*10);
         }
-        sparseIntSet = new IntSet(bKeys);
+        _sparseIntSetPaged = new IntSetPaged(bKeys);
         sparseHashSet = new HashSet<int>(bKeys);
     }
     
@@ -50,7 +50,7 @@ public class SparseIterationBenchmarks
     public void IntSet_SparseValues_Iterate()
     {
         var x = 0;
-        foreach (var i in sparseIntSet)
+        foreach (var i in _sparseIntSetPaged)
             x += i;
     }
     

@@ -5,91 +5,91 @@ using NUnit.Framework;
 namespace IntSet.Tests;
 
 [TestFixture]
-public class IntSetTests
+public class IntSetPagedTests
 {
-    private IntSet _set;
+    private IntSetPaged _setPaged;
 
     [SetUp]
     public void Setup()
     {
-        _set = new IntSet();
+        _setPaged = new IntSetPaged();
     }
 
     [Test]
     public void Add_NewValue_ReturnsTrue()
     {
-        Assert.That(_set.Add(42), Is.True);
-        Assert.That(_set.Contains(42), Is.True);
+        Assert.That(_setPaged.Add(42), Is.True);
+        Assert.That(_setPaged.Contains(42), Is.True);
     }
 
     [Test]
     public void Add_DuplicateValue_ReturnsFalse()
     {
-        _set.Add(42);
-        Assert.That(_set.Add(42), Is.False);
-        Assert.That(_set.Contains(42), Is.True);
+        _setPaged.Add(42);
+        Assert.That(_setPaged.Add(42), Is.False);
+        Assert.That(_setPaged.Contains(42), Is.True);
     }
 
     [Test]
     public void Contains_ExistingValue_ReturnsTrue()
     {
-        _set.Add(42);
-        Assert.That(_set.Contains(42), Is.True);
+        _setPaged.Add(42);
+        Assert.That(_setPaged.Contains(42), Is.True);
     }
 
     [Test]
     public void Contains_NonExistingValue_ReturnsFalse()
     {
-        _set.Add(42);
-        Assert.That(_set.Contains(43), Is.False);
+        _setPaged.Add(42);
+        Assert.That(_setPaged.Contains(43), Is.False);
     }
 
     [Test]
     public void Contains_EmptySet_ReturnsFalse()
     {
-        Assert.That(_set.Contains(42), Is.False);
+        Assert.That(_setPaged.Contains(42), Is.False);
     }
 
     [Test]
     public void Contains_AfterMultipleOperations_WorksCorrectly()
     {
         // Add some values
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
         // Remove one
-        _set.Remove(2);
+        _setPaged.Remove(2);
         
         // Add another
-        _set.Add(4);
+        _setPaged.Add(4);
         
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.False);
-        Assert.That(_set.Contains(3), Is.True);
-        Assert.That(_set.Contains(4), Is.True);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.False);
+        Assert.That(_setPaged.Contains(3), Is.True);
+        Assert.That(_setPaged.Contains(4), Is.True);
     }
 
     [Test]
     public void Remove_ExistingValue_ReturnsTrue()
     {
-        _set.Add(42);
-        Assert.That(_set.Remove(42), Is.True);
-        Assert.That(_set.Contains(42), Is.False);
+        _setPaged.Add(42);
+        Assert.That(_setPaged.Remove(42), Is.True);
+        Assert.That(_setPaged.Contains(42), Is.False);
     }
 
     [Test]
     public void Remove_NonExistingValue_ReturnsFalse()
     {
-        _set.Add(42);
-        Assert.That(_set.Remove(43), Is.False);
-        Assert.That(_set.Contains(42), Is.True);
+        _setPaged.Add(42);
+        Assert.That(_setPaged.Remove(43), Is.False);
+        Assert.That(_setPaged.Contains(42), Is.True);
     }
 
     [Test]
     public void Remove_FromEmptySet_ReturnsFalse()
     {
-        Assert.That(_set.Remove(42), Is.False);
+        Assert.That(_setPaged.Remove(42), Is.False);
     }
 
     [Test]
@@ -100,19 +100,19 @@ public class IntSetTests
         // Add all values
         foreach (var value in values)
         {
-            _set.Add(value);
+            _setPaged.Add(value);
         }
         
         // Remove all values
         foreach (var value in values)
         {
-            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
+            Assert.That(_setPaged.Remove(value), Is.True, $"Failed to remove {value}");
         }
         
         // Verify set is empty
         foreach (var value in values)
         {
-            Assert.That(_set.Contains(value), Is.False, $"Set still contains {value}");
+            Assert.That(_setPaged.Contains(value), Is.False, $"Set still contains {value}");
         }
     }
 
@@ -122,93 +122,93 @@ public class IntSetTests
         const int value = 42;
         
         // Add -> Remove -> Add -> Remove cycle
-        Assert.That(_set.Add(value), Is.True);
-        Assert.That(_set.Contains(value), Is.True);
+        Assert.That(_setPaged.Add(value), Is.True);
+        Assert.That(_setPaged.Contains(value), Is.True);
         
-        Assert.That(_set.Remove(value), Is.True);
-        Assert.That(_set.Contains(value), Is.False);
+        Assert.That(_setPaged.Remove(value), Is.True);
+        Assert.That(_setPaged.Contains(value), Is.False);
         
-        Assert.That(_set.Add(value), Is.True);
-        Assert.That(_set.Contains(value), Is.True);
+        Assert.That(_setPaged.Add(value), Is.True);
+        Assert.That(_setPaged.Contains(value), Is.True);
         
-        Assert.That(_set.Remove(value), Is.True);
-        Assert.That(_set.Contains(value), Is.False);
+        Assert.That(_setPaged.Remove(value), Is.True);
+        Assert.That(_setPaged.Contains(value), Is.False);
     }
 
     [Test]
     public void IntersectWith_EmptySpan_RemovesAllElements()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
-        _set.IntersectWith(Span<int>.Empty);
+        _setPaged.IntersectWith(Span<int>.Empty);
         
-        Assert.That(_set.Contains(1), Is.False);
-        Assert.That(_set.Contains(2), Is.False);
-        Assert.That(_set.Contains(3), Is.False);
+        Assert.That(_setPaged.Contains(1), Is.False);
+        Assert.That(_setPaged.Contains(2), Is.False);
+        Assert.That(_setPaged.Contains(3), Is.False);
     }
 
     [Test]
     public void IntersectWith_OverlappingValues_KeepsOnlyCommonElements()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
-        _set.Add(4);
-        _set.Add(5);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
+        _setPaged.Add(4);
+        _setPaged.Add(5);
         
         var intersectValues = new int[] { 2, 4, 6, 8 };
-        _set.IntersectWith(intersectValues);
+        _setPaged.IntersectWith(intersectValues);
         
-        Assert.That(_set.Contains(1), Is.False);
-        Assert.That(_set.Contains(2), Is.True);
-        Assert.That(_set.Contains(3), Is.False);
-        Assert.That(_set.Contains(4), Is.True);
-        Assert.That(_set.Contains(5), Is.False);
-        Assert.That(_set.Contains(6), Is.False); // Not originally in set
+        Assert.That(_setPaged.Contains(1), Is.False);
+        Assert.That(_setPaged.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(3), Is.False);
+        Assert.That(_setPaged.Contains(4), Is.True);
+        Assert.That(_setPaged.Contains(5), Is.False);
+        Assert.That(_setPaged.Contains(6), Is.False); // Not originally in set
     }
 
     [Test]
     public void IntersectWith_NoOverlappingValues_RemovesAllElements()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
         var intersectValues = new int[] { 4, 5, 6 };
-        _set.IntersectWith(intersectValues);
+        _setPaged.IntersectWith(intersectValues);
         
-        Assert.That(_set.Contains(1), Is.False);
-        Assert.That(_set.Contains(2), Is.False);
-        Assert.That(_set.Contains(3), Is.False);
+        Assert.That(_setPaged.Contains(1), Is.False);
+        Assert.That(_setPaged.Contains(2), Is.False);
+        Assert.That(_setPaged.Contains(3), Is.False);
     }
 
     [Test]
     public void IntersectWith_IdenticalValues_KeepsAllElements()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
         var intersectValues = new int[] { 1, 2, 3 };
-        _set.IntersectWith(intersectValues);
+        _setPaged.IntersectWith(intersectValues);
         
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.True);
-        Assert.That(_set.Contains(3), Is.True);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(3), Is.True);
     }
 
     [Test]
     public void IntersectWith_EmptySet_HasNoEffect()
     {
         var intersectValues = new int[] { 1, 2, 3 };
-        _set.IntersectWith(intersectValues);
+        _setPaged.IntersectWith(intersectValues);
         
         // Set should remain empty
-        Assert.That(_set.Contains(1), Is.False);
-        Assert.That(_set.Contains(2), Is.False);
-        Assert.That(_set.Contains(3), Is.False);
+        Assert.That(_setPaged.Contains(1), Is.False);
+        Assert.That(_setPaged.Contains(2), Is.False);
+        Assert.That(_setPaged.Contains(3), Is.False);
     }
 
     [Test]
@@ -217,13 +217,13 @@ public class IntSetTests
         // Add elements to set
         for (var i = 0; i < 1000; i += 2) // Even numbers
         {
-            _set.Add(i);
+            _setPaged.Add(i);
         }
         
         // Create large span with overlapping values
         var largeSpan = Enumerable.Range(0, 2000).Where(x => x % 3 == 0).ToArray();
         
-        _set.IntersectWith(largeSpan);
+        _setPaged.IntersectWith(largeSpan);
         
         // Verify intersection worked correctly
         // Should contain numbers that are both even (original set) and divisible by 3 (span)
@@ -231,7 +231,7 @@ public class IntSetTests
         for (var i = 0; i < 1000; i++)
         {
             var shouldContain = i % 6 == 0;
-            Assert.That(_set.Contains(i), Is.EqualTo(shouldContain), 
+            Assert.That(_setPaged.Contains(i), Is.EqualTo(shouldContain), 
                 $"Element {i} presence mismatch. Should contain: {shouldContain}");
         }
     }
@@ -249,26 +249,26 @@ public class IntSetTests
         
         foreach (var value in values)
         {
-            Assert.That(_set.Add(value), Is.True, $"Failed to add {value}");
+            Assert.That(_setPaged.Add(value), Is.True, $"Failed to add {value}");
         }
         
         // Verify all values are present
         foreach (var value in values)
         {
-            Assert.That(_set.Contains(value), Is.True, $"Missing value {value}");
+            Assert.That(_setPaged.Contains(value), Is.True, $"Missing value {value}");
         }
         
         // Remove every other value
         for (var i = 0; i < values.Length; i += 2)
         {
-            Assert.That(_set.Remove(values[i]), Is.True, $"Failed to remove {values[i]}");
+            Assert.That(_setPaged.Remove(values[i]), Is.True, $"Failed to remove {values[i]}");
         }
         
         // Verify removal worked correctly
         for (var i = 0; i < values.Length; i++)
         {
             var shouldExist = i % 2 == 1;
-            Assert.That(_set.Contains(values[i]), Is.EqualTo(shouldExist), 
+            Assert.That(_setPaged.Contains(values[i]), Is.EqualTo(shouldExist), 
                 $"Value {values[i]} existence mismatch after removal");
         }
     }
@@ -277,30 +277,30 @@ public class IntSetTests
     public void Zero_HandledCorrectly()
     {
         // Zero is a special case that should be handled correctly
-        Assert.That(_set.Add(0), Is.True);
-        Assert.That(_set.Contains(0), Is.True);
-        Assert.That(_set.Add(0), Is.False); // Duplicate
-        Assert.That(_set.Remove(0), Is.True);
-        Assert.That(_set.Contains(0), Is.False);
-        Assert.That(_set.Remove(0), Is.False); // Already removed
+        Assert.That(_setPaged.Add(0), Is.True);
+        Assert.That(_setPaged.Contains(0), Is.True);
+        Assert.That(_setPaged.Add(0), Is.False); // Duplicate
+        Assert.That(_setPaged.Remove(0), Is.True);
+        Assert.That(_setPaged.Contains(0), Is.False);
+        Assert.That(_setPaged.Remove(0), Is.False); // Already removed
     }    
     [Test]
     public void LargNumbers_HandledCorrectly()
     {
         // Zero is a special case that should be handled correctly
-        Assert.That(_set.Add(-88812381), Is.True);
-        Assert.That(_set.Contains(-88812381), Is.True);
+        Assert.That(_setPaged.Add(-88812381), Is.True);
+        Assert.That(_setPaged.Contains(-88812381), Is.True);
         
-        Assert.That(_set.Add(88812381), Is.True);
-        Assert.That(_set.Contains(88812381), Is.True);
+        Assert.That(_setPaged.Add(88812381), Is.True);
+        Assert.That(_setPaged.Contains(88812381), Is.True);
 
-        _set.Clear();
+        _setPaged.Clear();
         
-        Assert.That(_set.Add(88812381), Is.True);
-        Assert.That(_set.Contains(88812381), Is.True);
+        Assert.That(_setPaged.Add(88812381), Is.True);
+        Assert.That(_setPaged.Contains(88812381), Is.True);
         
-        Assert.That(_set.Add(-88812381), Is.True);
-        Assert.That(_set.Contains(-88812381), Is.True);
+        Assert.That(_setPaged.Add(-88812381), Is.True);
+        Assert.That(_setPaged.Contains(-88812381), Is.True);
     }
 
 
@@ -309,13 +309,13 @@ public class IntSetTests
     [Test]
     public void UnionWith_EmptySpan_NoChange()
     {
-        _set.Add(1);
-        _set.Add(2);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
         
-        _set.UnionWith(Span<int>.Empty);
+        _setPaged.UnionWith(Span<int>.Empty);
         
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.True);
     }
 
     [Test]
@@ -323,84 +323,84 @@ public class IntSetTests
     {
         var values = new int[] { 1, 2, 3, 4, 5 };
         
-        _set.UnionWith(values);
+        _setPaged.UnionWith(values);
         
         foreach (var value in values)
         {
-            Assert.That(_set.Contains(value), Is.True, $"Set doesn't contain {value}");
+            Assert.That(_setPaged.Contains(value), Is.True, $"Set doesn't contain {value}");
         }
     }
 
     [Test]
     public void UnionWith_DisjointSets_AddsAllNewElements()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
         var newValues = new int[] { 4, 5, 6 };
-        _set.UnionWith(newValues);
+        _setPaged.UnionWith(newValues);
         
         // Check original elements still exist
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.True);
-        Assert.That(_set.Contains(3), Is.True);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(3), Is.True);
         
         // Check new elements were added
-        Assert.That(_set.Contains(4), Is.True);
-        Assert.That(_set.Contains(5), Is.True);
-        Assert.That(_set.Contains(6), Is.True);
+        Assert.That(_setPaged.Contains(4), Is.True);
+        Assert.That(_setPaged.Contains(5), Is.True);
+        Assert.That(_setPaged.Contains(6), Is.True);
     }
 
     [Test]
     public void UnionWith_OverlappingSets_AddsOnlyNewElements()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
         var unionValues = new int[] { 2, 3, 4, 5 }; // 2,3 overlap, 4,5 are new
-        _set.UnionWith(unionValues);
+        _setPaged.UnionWith(unionValues);
         
         // All elements should be present
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.True);
-        Assert.That(_set.Contains(3), Is.True);
-        Assert.That(_set.Contains(4), Is.True);
-        Assert.That(_set.Contains(5), Is.True);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(3), Is.True);
+        Assert.That(_setPaged.Contains(4), Is.True);
+        Assert.That(_setPaged.Contains(5), Is.True);
     }
 
     [Test]
     public void UnionWith_IdenticalSets_NoChange()
     {
-        _set.Add(1);
-        _set.Add(2);
-        _set.Add(3);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
+        _setPaged.Add(3);
         
         var identicalValues = new int[] { 1, 2, 3 };
-        _set.UnionWith(identicalValues);
+        _setPaged.UnionWith(identicalValues);
         
         // All original elements should still be present
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.True);
-        Assert.That(_set.Contains(3), Is.True);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(3), Is.True);
         
         // No unexpected elements should be added
-        Assert.That(_set.Contains(4), Is.False);
+        Assert.That(_setPaged.Contains(4), Is.False);
     }
 
     [Test]
     public void UnionWith_DuplicatesInSpan_HandledCorrectly()
     {
-        _set.Add(1);
+        _setPaged.Add(1);
         
         var valuesWithDuplicates = new int[] { 1, 2, 2, 3, 3, 3 };
-        _set.UnionWith(valuesWithDuplicates);
+        _setPaged.UnionWith(valuesWithDuplicates);
         
-        Assert.That(_set.Contains(1), Is.True);
-        Assert.That(_set.Contains(2), Is.True);
-        Assert.That(_set.Contains(3), Is.True);
-        Assert.That(_set.Contains(4), Is.False);
+        Assert.That(_setPaged.Contains(1), Is.True);
+        Assert.That(_setPaged.Contains(2), Is.True);
+        Assert.That(_setPaged.Contains(3), Is.True);
+        Assert.That(_setPaged.Contains(4), Is.False);
     }
 
  
@@ -409,17 +409,17 @@ public class IntSetTests
     public void UnionWith_TriggersResize_WorksCorrectly()
     {
         // Start with small set
-        _set.Add(1);
-        _set.Add(2);
+        _setPaged.Add(1);
+        _setPaged.Add(2);
         
         // Union with large span that should trigger resize
         var largeSpan = Enumerable.Range(3, 50).ToArray();
-        _set.UnionWith(largeSpan);
+        _setPaged.UnionWith(largeSpan);
         
         // Verify all elements are present after potential resize
         for (var i = 1; i <= 52; i++)
         {
-            Assert.That(_set.Contains(i), Is.True, $"Set doesn't contain {i} after resize");
+            Assert.That(_setPaged.Contains(i), Is.True, $"Set doesn't contain {i} after resize");
         }
     }
 
@@ -429,17 +429,17 @@ public class IntSetTests
         // Add initial elements
         for (var i = 1; i <= 10; i++)
         {
-            _set.Add(i);
+            _setPaged.Add(i);
         }
         
         // Remove some elements
-        _set.Remove(2);
-        _set.Remove(4);
-        _set.Remove(6);
+        _setPaged.Remove(2);
+        _setPaged.Remove(4);
+        _setPaged.Remove(6);
         
         // Union with new elements
         var newValues = new int[] { 11, 12, 13, 2 }; // Include one previously removed value
-        _set.UnionWith(newValues);
+        _setPaged.UnionWith(newValues);
         
         // Verify final state
         var expectedPresent = new[] { 1, 2, 3, 5, 7, 8, 9, 10, 11, 12, 13 };
@@ -447,12 +447,12 @@ public class IntSetTests
         
         foreach (var value in expectedPresent)
         {
-            Assert.That(_set.Contains(value), Is.True, $"Set should contain {value}");
+            Assert.That(_setPaged.Contains(value), Is.True, $"Set should contain {value}");
         }
         
         foreach (var value in expectedAbsent)
         {
-            Assert.That(_set.Contains(value), Is.False, $"Set should not contain {value}");
+            Assert.That(_setPaged.Contains(value), Is.False, $"Set should not contain {value}");
         }
     }
 
@@ -466,14 +466,14 @@ public class IntSetTests
         // Add negative values
         foreach (var value in negativeValues)
         {
-            _set.Add(value);
+            _setPaged.Add(value);
         }
         
         // Remove them and verify
         foreach (var value in negativeValues)
         {
-            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
-            Assert.That(_set.Contains(value), Is.False, $"Set still contains {value}");
+            Assert.That(_setPaged.Remove(value), Is.True, $"Failed to remove {value}");
+            Assert.That(_setPaged.Contains(value), Is.False, $"Set still contains {value}");
         }
     }
 
@@ -485,28 +485,28 @@ public class IntSetTests
         // Add large values
         foreach (var value in largeValues)
         {
-            _set.Add(value);
+            _setPaged.Add(value);
         }
         
         // Remove them and verify
         foreach (var value in largeValues)
         {
-            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
-            Assert.That(_set.Contains(value), Is.False, $"Set still contains {value}");
+            Assert.That(_setPaged.Remove(value), Is.True, $"Failed to remove {value}");
+            Assert.That(_setPaged.Contains(value), Is.False, $"Set still contains {value}");
         }
     }
 
     [Test]
     public void Remove_ZeroValue_WorksCorrectly()
     {
-        _set.Add(0);
-        Assert.That(_set.Contains(0), Is.True);
+        _setPaged.Add(0);
+        Assert.That(_setPaged.Contains(0), Is.True);
         
-        Assert.That(_set.Remove(0), Is.True);
-        Assert.That(_set.Contains(0), Is.False);
+        Assert.That(_setPaged.Remove(0), Is.True);
+        Assert.That(_setPaged.Contains(0), Is.False);
         
         // Try removing again
-        Assert.That(_set.Remove(0), Is.False);
+        Assert.That(_setPaged.Remove(0), Is.False);
     }
 
     [Test]
@@ -517,18 +517,18 @@ public class IntSetTests
         // Add values and verify count
         foreach (var value in values)
         {
-            _set.Add(value);
+            _setPaged.Add(value);
         }
-        Assert.That(_set.Count, Is.EqualTo(values.Length));
+        Assert.That(_setPaged.Count, Is.EqualTo(values.Length));
         
         // Remove values one by one and verify count decreases
         for (int i = 0; i < values.Length; i++)
         {
-            Assert.That(_set.Remove(values[i]), Is.True);
-            Assert.That(_set.Count, Is.EqualTo(values.Length - i - 1), $"Count incorrect after removing {values[i]}");
+            Assert.That(_setPaged.Remove(values[i]), Is.True);
+            Assert.That(_setPaged.Count, Is.EqualTo(values.Length - i - 1), $"Count incorrect after removing {values[i]}");
         }
         
-        Assert.That(_set.Count, Is.EqualTo(0));
+        Assert.That(_setPaged.Count, Is.EqualTo(0));
     }
 
     [Test]
@@ -541,28 +541,28 @@ public class IntSetTests
         // Add all values
         foreach (var value in allValues)
         {
-            _set.Add(value);
+            _setPaged.Add(value);
         }
         
         // Remove some values
         foreach (var value in toRemove)
         {
-            Assert.That(_set.Remove(value), Is.True);
+            Assert.That(_setPaged.Remove(value), Is.True);
         }
         
         // Verify removed values are gone
         foreach (var value in toRemove)
         {
-            Assert.That(_set.Contains(value), Is.False, $"Removed value {value} still present");
+            Assert.That(_setPaged.Contains(value), Is.False, $"Removed value {value} still present");
         }
         
         // Verify remaining values are still there
         foreach (var value in shouldRemain)
         {
-            Assert.That(_set.Contains(value), Is.True, $"Remaining value {value} was lost");
+            Assert.That(_setPaged.Contains(value), Is.True, $"Remaining value {value} was lost");
         }
         
-        Assert.That(_set.Count, Is.EqualTo(shouldRemain.Length));
+        Assert.That(_setPaged.Count, Is.EqualTo(shouldRemain.Length));
     }
 
     [Test]
@@ -573,7 +573,7 @@ public class IntSetTests
         
         foreach (var initialKey in initialKeys)
         {
-            var testSet = new IntSet();
+            var testSet = new IntSetPaged();
             
             // Set initial key by adding first value
             testSet.Add(initialKey);
@@ -614,7 +614,7 @@ public class IntSetTests
             int value = rng.Next(-10000, 10000);
             if (allValues.Add(value))
             {
-                _set.Add(value);
+                _setPaged.Add(value);
             }
         }
         
@@ -631,18 +631,18 @@ public class IntSetTests
         // Remove selected values
         foreach (var value in toRemove)
         {
-            Assert.That(_set.Remove(value), Is.True, $"Failed to remove {value}");
+            Assert.That(_setPaged.Remove(value), Is.True, $"Failed to remove {value}");
         }
         
         // Verify removed values are gone and remaining values are still there
         foreach (var value in allValues)
         {
             bool shouldExist = !toRemove.Contains(value);
-            Assert.That(_set.Contains(value), Is.EqualTo(shouldExist), 
+            Assert.That(_setPaged.Contains(value), Is.EqualTo(shouldExist), 
                 $"Value {value} existence mismatch: expected {shouldExist}");
         }
         
-        Assert.That(_set.Count, Is.EqualTo(allValues.Count - toRemove.Count));
+        Assert.That(_setPaged.Count, Is.EqualTo(allValues.Count - toRemove.Count));
     }
 
     [Test]
@@ -655,18 +655,18 @@ public class IntSetTests
         // Add all values
         foreach (var value in values)
         {
-            _set.Add(value);
+            _setPaged.Add(value);
         }
         
         // Remove some values
         foreach (var value in toRemove)
         {
-            _set.Remove(value);
+            _setPaged.Remove(value);
         }
         
         // Iterate and collect remaining values
         var iteratedValues = new List<int>();
-        foreach (var value in _set)
+        foreach (var value in _setPaged)
         {
             iteratedValues.Add(value);
         }
@@ -681,59 +681,17 @@ public class IntSetTests
     [Test]
     public void Remove_MultipleRemovesOfSameValue_OnlyFirstReturnsTrue()
     {
-        _set.Add(42);
+        _setPaged.Add(42);
         
         // First remove should succeed
-        Assert.That(_set.Remove(42), Is.True);
-        Assert.That(_set.Contains(42), Is.False);
+        Assert.That(_setPaged.Remove(42), Is.True);
+        Assert.That(_setPaged.Contains(42), Is.False);
         
         // Subsequent removes should fail
-        Assert.That(_set.Remove(42), Is.False);
-        Assert.That(_set.Remove(42), Is.False);
-        Assert.That(_set.Remove(42), Is.False);
+        Assert.That(_setPaged.Remove(42), Is.False);
+        Assert.That(_setPaged.Remove(42), Is.False);
+        Assert.That(_setPaged.Remove(42), Is.False);
     }
     
-    [Test]
-    public void EnumeratorForPageRange_WithZigzagEncoding_MultiplePages_ReturnsCorrectValues()
-    {
-        // Zigzag encoding: positive n -> n*2, negative n -> (-n*2)-1
-        // Page 0: zigzag 0-63   (0, -1, 1, -2, 2, ..., -31, 31, -32)
-        // Page 1: zigzag 64-127 (32, -33, 33, -34, 34, ..., -63, 63, -64)
-        // Page 2: zigzag 128+   (64, -65, 65, ...)
     
-        var testValues = new[]
-        {
-            0, -1, 1, -32,     // Page 0 (zigzag: 0, 1, 2, 63)
-            32, -33, 33, -63,  // Page 1 (zigzag: 64, 65, 66, 125)
-            64, -65            // Page 2 (zigzag: 128, 129)
-        };
-    
-        foreach (var value in testValues)
-        {
-            _set.Add(value);
-        }
-    
-        // Get enumerator for pages 1-2
-        var pageEnumerator = _set.GetEnumeratorForPageRange(1, 3);
-        var pageValues = new List<int>();
-    
-        while (pageEnumerator.MoveNext())
-        {
-            pageValues.Add(pageEnumerator.Current);
-        }
-    
-        // Values that should be in pages 1-2
-        var expectedInRange = new[] { 32, -33, 33, -63, 64, -65 };
-        var expectedNotInRange = new[] { 0, -1, 1, -32 };
-    
-        foreach (var value in expectedInRange)
-        {
-            Assert.That(pageValues.Contains(value), Is.True, $"Pages 1-2 should contain {value}");
-        }
-    
-        foreach (var value in expectedNotInRange)
-        {
-            Assert.That(pageValues.Contains(value), Is.False, $"Pages 1-2 should not contain {value}");
-        }
-    }
 }

@@ -24,16 +24,16 @@ public class MemoryUsageBenchmarks
     }
 
     [Benchmark]
-    public IntSet IntSet_MemoryUsage()
+    public IntSetPaged IntSet_MemoryUsage()
     {
-        var intSet = new IntSet(aKeys);
+        var intSet = new IntSetPaged(aKeys);
         return intSet;
     }
     
     [Benchmark]
-    public IntSet DenseIdMapMemoryUsage()
+    public IntSetClustered ClusSet_MemoryUsage()
     {
-        var vm = new IntSet(aKeys);
+        var vm = new IntSetClustered(aKeys);
         return vm;
     }
     
@@ -47,9 +47,17 @@ public class MemoryUsageBenchmarks
     [Benchmark]
     public void IntSet_MemoryUsage_2KeysExtremeValues()
     {
-        var intSet = new IntSet();
+        var intSet = new IntSetPaged();
         intSet.Add(0);
-        intSet.Add(10000000);
+        intSet.Add(int.MaxValue);
+    }
+    
+    [Benchmark]
+    public void ClusIntSet_MemoryUsage_2KeysExtremeValues()
+    {
+        var intSet = new IntSetClustered();
+        intSet.Add(0);
+        intSet.Add(int.MaxValue);
     }
     
     [Benchmark()]
@@ -57,6 +65,6 @@ public class MemoryUsageBenchmarks
     {
         var hashSet = new HashSet<int>();
         hashSet.Add(0);
-        hashSet.Add(10000000);
+        hashSet.Add(int.MaxValue);
     }
 }

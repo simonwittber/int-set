@@ -12,7 +12,7 @@ public class ContainsBenchmarks : IntSetBenchmarkBase
     public void IntSet_Contains()
     {
         for (var i = 0; i < N; i++)
-            intSet.Contains(lookupKeys[i]);
+            IntSetPaged.Contains(lookupKeys[i]);
     }
     
     [Benchmark]

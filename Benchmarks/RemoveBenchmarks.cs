@@ -12,7 +12,7 @@ public class RemoveBenchmarks : IntSetBenchmarkBase
     public void IntSet_Remove()
     {
         for (var i = 0; i < N; i++)
-            intSet.Remove(lookupKeys[i]);
+            IntSetPaged.Remove(lookupKeys[i]);
     }
     
     [Benchmark]

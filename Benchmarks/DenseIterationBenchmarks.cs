@@ -13,10 +13,10 @@ public class DenseIterationBenchmarks
 
     private int[] aKeys, bKeys;
 
-    private IntSet intSet;
+    private IntSetPaged _intSetPaged;
     HashSet<int> hashSet;
     
-    private IntSet sparseIntSet;
+    private IntSetPaged _sparseIntSetPaged;
     HashSet<int> sparseHashSet;
     DenseIdMap _denseIdMap;
     
@@ -32,7 +32,7 @@ public class DenseIterationBenchmarks
             aKeys[i] = rng.Next(0, N);
         }
 
-        intSet = new IntSet(aKeys);
+        _intSetPaged = new IntSetPaged(aKeys);
         hashSet = new HashSet<int>(aKeys);
         _denseIdMap = new DenseIdMap(aKeys);
         bKeys = new int[N];
@@ -41,7 +41,7 @@ public class DenseIterationBenchmarks
         {
             bKeys[i] = rng.Next(-N*10, +N*10);
         }
-        sparseIntSet = new IntSet(bKeys);
+        _sparseIntSetPaged = new IntSetPaged(bKeys);
         sparseHashSet = new HashSet<int>(bKeys);
     }
     
@@ -49,7 +49,7 @@ public class DenseIterationBenchmarks
     public void IntSet_DenseValues_Iterate()
     {
         var x = 0;
-        foreach (var i in intSet)
+        foreach (var i in _intSetPaged)
             x += i;
     }
     

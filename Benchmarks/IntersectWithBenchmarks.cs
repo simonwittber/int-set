@@ -11,13 +11,13 @@ public class IntersectWithBenchmarks : IntSetBenchmarkBase
     [Benchmark]
     public void IntSet_IntersectWith()
     {
-        intSet.IntersectWith(bKeys);
+        IntSetPaged.IntersectWith(bKeys);
     }
     
     [Benchmark]
     public void IntSet_IntersectWith_IntSet()
     {
-        intSet.IntersectWith(intSetB);
+        IntSetPaged.IntersectWith(IntSetPagedB);
     }
 
     [Benchmark(Baseline = true)]

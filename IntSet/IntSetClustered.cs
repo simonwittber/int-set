@@ -6,20 +6,13 @@ using System.Diagnostics;
 
 namespace IntSet;
 
-public interface IReadOnlyIntSet
-{
-    int Count { get; }
-    bool Contains(int value);
-    int[] ToArray();
-    List<int> ToList();
-}
 
 /// <summary>
 /// A memory-efficient set for storing integers, optimized for dense ranges of integer keys.
 /// Note, a sparse, large range is not stored efficiently.
 /// Use this class for fast membership checks and set operations on integers.
 /// </summary>
-public class IntSet : IEnumerable<int>, IReadOnlyIntSet
+public class IntSetClustered : IEnumerable<int>
 {
     private const int PageBits = 6;
     private const int PageSize = 1 << PageBits;
@@ -38,7 +31,7 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
 
     public int Count => _count;
 
-    public IntSet()
+    public IntSetClustered()
     {
         _pages = new ulong[16];
         _pageCount = 0;
@@ -46,7 +39,7 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         _isInitialized = false;
     }
 
-    public IntSet(Span<int> values)
+    public IntSetClustered(Span<int> values)
     {
         _pages = new ulong[16];
         _pageCount = 0;
@@ -206,12 +199,7 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         _isInitialized = false;
     }
 
-    public void UnionWith(IReadOnlyIntSet other)
-    {
-        UnionWith((IntSet) other);
-    }
-
-    public void UnionWith(IntSet other)
+    public void UnionWith(IntSetClustered other)
     {
         if (other._count == 0) return;
         if (_count == 0)
@@ -223,42 +211,24 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         // If the page offsets are the same, we can just merge the pages
         if (other._valueOffset == _valueOffset)
         {
+            // make sure we have enough pages allocated to match the other set
             if (_pageCount < other._pageCount)
             {
-                Array.Resize(ref _pages, other._pageCount);
-                Array.Copy(other._pages, 0, _pages, 0, other._pageCount);
+                EnsurePage(other._pageCount);
                 _pageCount = other._pageCount;
             }
-
+            // merge other pages into the current set's pages
             for (var i = 0; i < other._pageCount; i++)
-            {
                 _pages[i] |= other._pages[i];
-            }
-
             Recount();
         }
-        else if (other._valueOffset > _valueOffset)
+        else 
         {
-            // other set has a higher value offset, so we iterate the other set of pages
-            // and map them to the current set's pages.
-            var offsetDiff = other._valueOffset - _valueOffset;
-            for (var i = 0; i < other._pageCount; i++)
-            {
-                var localPageIndex = i + (offsetDiff >> PageBits);
-                EnsurePage(localPageIndex);
-                _pages[localPageIndex] |= other._pages[i];
-            }
-
-            _pageCount = Math.Max(_pageCount, other._pageCount + (offsetDiff >> PageBits));
-            _count += other._count;
-        }
-        else if (other._valueOffset < _valueOffset)
-        {
+            // TODO: find a way to remap pages and do this bitwise
             foreach (var otherValue in other)
             {
                 Add(otherValue);
             }
-
             Recount();
         }
     }
@@ -275,21 +245,18 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         _count = count;
     }
 
-    private void CopyOtherSet(IntSet other)
+    private void CopyOtherSet(IntSetClustered other)
     {
         _valueOffset = other._valueOffset;
         _isInitialized = other._isInitialized;
         _count = other._count;
         _pageCount = other._pageCount;
-
         if (other._pageCount > _pages.Length)
             Array.Resize(ref _pages, other._pageCount);
-
         Array.Copy(other._pages, _pages, other._pageCount);
     }
 
-
-    public void IntersectWith(IntSet other)
+    public void IntersectWith(IntSetClustered other)
     {
         if (_count == 0 || other._count == 0)
         {
@@ -300,38 +267,27 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
         if (_valueOffset == other._valueOffset)
         {
             // both sets have the same value offset, we can just intersect the pages
-            for (var i = 0; i < _pageCount && i < other._pageCount; i++)
+            var minCount = Math.Min(_pageCount, other._pageCount);
+            for (var i = 0; i < minCount; i++)
             {
                 _pages[i] &= other._pages[i];
             }
-
-            // Count the bits set in the pages
-            _count = 0;
-            for (var i = 0; i < _pageCount; i++)
-                _count += PopCount(_pages[i]);
-        }
-        else if (other._valueOffset > _valueOffset)
-        {
-            // other set has a higher value offset, so we iterate the other set of pages
-            // and map them to the current set's pages.
-            var offsetDiff = other._valueOffset - _valueOffset;
-            for (var i = 0; i < other._pageCount; i++)
+            // Remove any pages that not common
+            for (var i = minCount; i < _pageCount; i++)
             {
-                var localPageIndex = i + (offsetDiff >> PageBits);
-                EnsurePage(localPageIndex);
-                _pages[localPageIndex] &= other._pages[i];
+                _pages[i] = 0ul; // Clear unused pages
             }
-
-            _pageCount = Math.Max(_pageCount, other._pageCount + (offsetDiff >> PageBits));
-            _count += other._count;
+            _pageCount = minCount;
+            Recount();
         }
-        else if (other._valueOffset < _valueOffset)
+        else
         {
+            // TODO: find a way to remap pages and do this bitwise
             IntersectWith(other.ToArray());
         }
     }
 
-    public void ExceptWith(IntSet other)
+    public void ExceptWith(IntSetClustered other)
     {
         if (_count == 0 || other._count == 0) return;
 
@@ -342,35 +298,17 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
             {
                 _pages[i] &= ~other._pages[i];
             }
-
-            // Count the bits set in the pages
-            _count = 0;
-            for (var i = 0; i < _pageCount; i++)
-                _count += PopCount(_pages[i]);
+            Recount();
         }
-        else if (other._valueOffset > _valueOffset)
+        else
         {
-            // other set has a higher value offset, so we iterate the other set of pages
-            // and map them to the current set's pages.
-            var offsetDiff = other._valueOffset - _valueOffset;
-            for (var i = 0; i < other._pageCount; i++)
-            {
-                var localPageIndex = i + (offsetDiff >> PageBits);
-                EnsurePage(localPageIndex);
-                _pages[localPageIndex] &= ~other._pages[i];
-            }
-
-            _pageCount = Math.Max(_pageCount, other._pageCount + (offsetDiff >> PageBits));
-            _count += other._count;
-        }
-        else if (other._valueOffset < _valueOffset)
-        {
+            // TODO: find a way to remap pages and do this bitwise
             foreach (var otherValue in other)
                 Remove(otherValue);
         }
     }
 
-    public void SymmetricExceptWith(IntSet other)
+    public void SymmetricExceptWith(IntSetClustered other)
     {
         if (other._count == 0) return;
         if (_count == 0)
@@ -378,8 +316,33 @@ public class IntSet : IEnumerable<int>, IReadOnlyIntSet
             UnionWith(other);
             return;
         }
-
-        SymmetricExceptWith(other.ToArray());
+        if (_valueOffset == other._valueOffset)
+        {
+            // Ensure we have enough pages for the result
+            var maxPageCount = Math.Max(_pageCount, other._pageCount);
+            EnsurePage(maxPageCount - 1);
+    
+            // XOR overlapping pages
+            var minPageCount = Math.Min(_pageCount, other._pageCount);
+            for (var i = 0; i < minPageCount; i++)
+            {
+                _pages[i] ^= other._pages[i];
+            }
+    
+            // Copy pages that only exist in the other set
+            for (var i = _pageCount; i < other._pageCount; i++)
+            {
+                _pages[i] = other._pages[i];
+            }
+    
+            _pageCount = maxPageCount;
+            Recount();
+        }
+        else
+        {
+            // TODO: find a way to remap pages and do this bitwise
+            SymmetricExceptWith(other.ToArray());
+        }
     }
 
     public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount, _valueOffset);

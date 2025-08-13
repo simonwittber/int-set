@@ -11,12 +11,14 @@ public class IntMap<T>
     private const int PageMask = PageSize - 1;
 
     private readonly List<T[]> _values = new List<T[]>();
-    private readonly IntSet _keys = new IntSet();
-
-    private int _initialKey;
-    private bool _isInitialized;
-    public int Count { get; private set; }
-
+    
+    private static void GetIndexAndSlot(int value, out int pageIndex, out int slot)
+    {
+        var key = ZigZagEncode(value);
+        pageIndex = (int)(key >> PageBits);
+        slot = (int)(key & PageMask);
+    }
+    
     private void EnsurePage(int pageIndex)
     {
         while (_values.Count <= pageIndex)
@@ -26,6 +28,12 @@ public class IntMap<T>
 
         _values[pageIndex] ??= new T[PageSize];
     }
+    
+    private readonly IntSetPaged _keys = new IntSetPaged();
+
+    public int Count { get; private set; }
+
+    
 
     public void EnsureCapacity(int items)
     {
@@ -35,9 +43,7 @@ public class IntMap<T>
     public bool Remove(int v)
     {
         if (!_keys.Remove(v)) return false;
-        var u = ZigZagEncode(v - _initialKey);
-        var pageIndex = (int) (u >> PageBits);
-        var slot = (int) (u & PageMask);
+        GetIndexAndSlot(v, out var pageIndex, out var slot);
         _values[pageIndex]![slot] = default(T)!;
         Count--;
         return true;
@@ -49,9 +55,7 @@ public class IntMap<T>
     {
         if (_keys.Contains(v))
         {
-            var key = ZigZagEncode(v - _initialKey);
-            var pageIndex = (int)(key >> PageBits);
-            var slot = (int)(key & PageMask);
+            GetIndexAndSlot(v, out var pageIndex, out var slot);
             value = _values[pageIndex]![slot];
             return true;
         }
@@ -79,24 +83,20 @@ public class IntMap<T>
         {
             if (!_keys.Contains(v))
                 throw new KeyNotFoundException();
-            var key = ZigZagEncode(v - _initialKey);
-            var pageIndex = (int)(key >> PageBits);
-            var slot = (int)(key & PageMask);
+            GetIndexAndSlot(v, out int pageIndex, out var slot);
             return _values[pageIndex]![slot];
         }
         set
         {
-            _initialKey = _isInitialized ? _initialKey : v;
-            _isInitialized = true;
-            var key = ZigZagEncode(v - _initialKey);
-            var pageIndex = (int)(key >> PageBits);
+            GetIndexAndSlot(v, out int pageIndex, out var slot);
             EnsurePage(pageIndex);
-            var slot = (int)(key & PageMask);
             _values[pageIndex]![slot] = value;
             if (_keys.Add(v))
                 Count++;
         }
     }
+
+    
 
 
     public void Clear()
@@ -109,13 +109,11 @@ public class IntMap<T>
             }
         }
 
-        _isInitialized = false;
-        _initialKey = 0;
         Count = 0;
         _keys.Clear();
     }
 
-    public IntSet.Enumerator GetEnumerator() => _keys.GetEnumerator();
+    public IEnumerator<int> GetEnumerator() => _keys.GetEnumerator();
 
     public ValueEnumerator Values => new ValueEnumerator(this);
 
@@ -128,7 +126,7 @@ public class IntMap<T>
         int _pageIndex;
         int _slotIndex;
         T[] activePage;
-        private IntSet.Enumerator _keyEnumerator;
+        private IEnumerator<int> _keyEnumerator;
 
         public ValueEnumerator GetEnumerator() => this;
 

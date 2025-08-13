@@ -12,13 +12,13 @@ public class UnionWithBenchmarks : IntSetBenchmarkBase
     [Benchmark]
     public void IntSet_UnionWith()
     {
-        intSet.UnionWith(bKeys);
+        IntSetPaged.UnionWith(bKeys);
     }
     
     [Benchmark]
     public void IntSet_UnionWith_IntSet()
     {
-        intSet.UnionWith(intSetB);
+        IntSetPaged.UnionWith(IntSetPagedB);
     }
 
     [Benchmark(Baseline = true)]

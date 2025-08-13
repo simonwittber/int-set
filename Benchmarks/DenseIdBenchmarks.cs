@@ -32,9 +32,9 @@ public class DenseIdBenchmarks : IntSetBenchmarkBase
     }
 
     [Benchmark]
-    public IntSet DenseIdMapMemoryUsage()
+    public IntSetPaged DenseIdMapMemoryUsage()
     {
-        var vm = new IntSet(aKeys);
+        var vm = new IntSetPaged(aKeys);
         return vm;
     }
 

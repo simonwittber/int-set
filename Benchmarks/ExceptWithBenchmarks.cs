@@ -11,7 +11,7 @@ public class ExceptWithBenchmarks : IntSetBenchmarkBase
     [Benchmark]
     public void IntSet_ExceptWith()
     {
-        intSet.ExceptWith(bKeys);
+        IntSetPaged.ExceptWith(bKeys);
     }
 
     [Benchmark(Baseline = true)]

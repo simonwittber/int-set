@@ -12,7 +12,7 @@ public class AddBenchmarks : IntSetBenchmarkBase
     public void IntSet_Add()
     {
         for (var i = 0; i < N; i++)
-            intSet.Add(lookupKeys[i]);
+            IntSetPaged.Add(lookupKeys[i]);
     }
     
     [Benchmark]

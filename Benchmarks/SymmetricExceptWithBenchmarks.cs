@@ -13,7 +13,7 @@ public class SymmetricExceptWithBenchmarks : IntSetBenchmarkBase
     [Benchmark]
     public void IntSet_SymmetricExceptWith()
     {
-        intSet.SymmetricExceptWith(bKeys);
+        IntSetPaged.SymmetricExceptWith(bKeys);
     }
 
     [Benchmark(Baseline = true)]

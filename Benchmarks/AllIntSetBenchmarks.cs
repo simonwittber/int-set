@@ -10,10 +10,17 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
 {
 
     [Benchmark]
-    public void IntSet_Contains()
+    public void PagedSet_Contains()
     {
         for (var i = 0; i < N; i++)
-            intSet.Contains(lookupKeys[i]);
+            IntSetPaged.Contains(lookupKeys[i]);
+    }
+    
+    [Benchmark]
+    public void ClusSet_Contains()
+    {
+        for (var i = 0; i < N; i++)
+            clusSet.Contains(lookupKeys[i]);
     }
 
     [Benchmark()]
@@ -24,12 +31,17 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_Add()
+    public void PagedSet_Add()
     {
         for (var i = 0; i < N; i++)
-            intSet.Add(lookupKeys[i]);
+            IntSetPaged.Add(lookupKeys[i]);
     }
-
+    [Benchmark]
+    public void ClusSet_Add()
+    {
+        for (var i = 0; i < N; i++)
+            clusSet.Add(lookupKeys[i]);
+    }
     [Benchmark()]
     public void HashSet_Add()
     {
@@ -38,10 +50,17 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_DenseValues_Iterate()
+    public void PagedSet_DenseValues_Iterate()
     {
         var x = 0;
-        foreach (var i in intSet)
+        foreach (var i in IntSetPaged)
+            x += i;
+    }
+    [Benchmark]
+    public void ClusSet_DenseValues_Iterate()
+    {
+        var x = 0;
+        foreach (var i in clusSet)
             x += i;
     }
 
@@ -54,10 +73,17 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_Remove()
+    public void PagedSet_Remove()
     {
         for (var i = 0; i < N; i++)
-            intSet.Remove(lookupKeys[i]);
+            IntSetPaged.Remove(lookupKeys[i]);
+    }
+    
+    [Benchmark]
+    public void ClusSet_Remove()
+    {
+        for (var i = 0; i < N; i++)
+            clusSet.Remove(lookupKeys[i]);
     }
 
     [Benchmark()]
@@ -68,15 +94,27 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_ExceptWith_Span()
+    public void PagedSet_ExceptWith_Span()
     {
-        intSet.ExceptWith(bKeys);
+        IntSetPaged.ExceptWith(bKeys);
     }
     
     [Benchmark]
-    public void IntSet_ExceptWith_IntSet()
+    public void PagedSet_ExceptWith_IntSet()
     {
-        intSet.ExceptWith(intSetB);
+        IntSetPaged.ExceptWith(IntSetPagedB);
+    }
+    
+    [Benchmark]
+    public void ClusSet_ExceptWith_Span()
+    {
+        clusSet.ExceptWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void ClusSet_ExceptWith_IntSet()
+    {
+        clusSet.ExceptWith(clusSetB);
     }
 
     [Benchmark()]
@@ -86,15 +124,27 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_IntersectWith_Span()
+    public void PagedSet_IntersectWith_Span()
     {
-        intSet.IntersectWith(bKeys);
+        IntSetPaged.IntersectWith(bKeys);
     }
     
     [Benchmark]
-    public void IntSet_IntersectWith_IntSet()
+    public void PagedSet_IntersectWith_IntSet()
     {
-        intSet.IntersectWith(intSetB);
+        IntSetPaged.IntersectWith(IntSetPagedB);
+    }
+    
+    [Benchmark]
+    public void ClusSet_IntersectWith_Span()
+    {
+        clusSet.IntersectWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void ClusSet_IntersectWith_IntSet()
+    {
+        clusSet.IntersectWith(clusSetB);
     }
 
     [Benchmark()]
@@ -104,15 +154,27 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_SymmetricExceptWith_Span()
+    public void PagedSet_SymmetricExceptWith_Span()
     {
-        intSet.SymmetricExceptWith(bKeys);
+        IntSetPaged.SymmetricExceptWith(bKeys);
     }
     
     [Benchmark]
-    public void IntSet_SymmetricExceptWith_IntSet()
+    public void PagedSet_SymmetricExceptWith_IntSet()
     {
-        intSet.SymmetricExceptWith(intSetB);
+        IntSetPaged.SymmetricExceptWith(IntSetPagedB);
+    }
+    
+    [Benchmark]
+    public void ClusSet_SymmetricExceptWith_Span()
+    {
+        clusSet.SymmetricExceptWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void ClusSet_SymmetricExceptWith_IntSet()
+    {
+        clusSet.SymmetricExceptWith(clusSet);
     }
 
     [Benchmark()]
@@ -122,15 +184,27 @@ public class AllIntSetBenchmarks : IntSetBenchmarkBase
     }
     
     [Benchmark]
-    public void IntSet_UnionWith_Span()
+    public void PagedSet_UnionWith_Span()
     {
-        intSet.UnionWith(bKeys);
+        IntSetPaged.UnionWith(bKeys);
     }
     
     [Benchmark]
-    public void IntSet_UnionWith_IntSet()
+    public void PagedSet_UnionWith_IntSet()
     {
-        intSet.UnionWith(intSetB);
+        IntSetPaged.UnionWith(IntSetPagedB);
+    }
+    
+    [Benchmark]
+    public void ClusSet_UnionWith_Span()
+    {
+        clusSet.UnionWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void ClusSet_UnionWith_IntSet()
+    {
+        clusSet.UnionWith(clusSetB);
     }
 
     [Benchmark()]
