@@ -18,7 +18,7 @@ public class BitmapBenchmarks
     private ClusteredBitmap clusteredBitmap;
     private NativeClusteredBitmap nativeClusteredBitmap; // added
 
-    [IterationSetup]
+    [IterationCleanup]
     public void Cleanup()
     {
         nativeClusteredBitmap?.Dispose();

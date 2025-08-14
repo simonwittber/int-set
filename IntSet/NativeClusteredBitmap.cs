@@ -160,8 +160,37 @@ public unsafe class NativeClusteredBitmap : IDisposable
 
     public void Or(Span<int> span)
     {
-        foreach (var v in span)
-            Set(v);
+        var maxPageIndex = _pageCount - 1;
+        foreach (var value in span)
+        {
+            GetPageAndBit(value, out var pageIndex, out _);
+            maxPageIndex = Math.Max(maxPageIndex, pageIndex);
+        }
+
+        if (maxPageIndex >= 0)
+        {
+            EnsurePage(maxPageIndex);
+            _pageCount = Math.Max(_pageCount, maxPageIndex + 1);
+        }
+        var pageCount = _pageCount;
+
+        var masks = pageCount > MaxPageCount ? new ulong[pageCount] : stackalloc ulong[pageCount];
+        if (pageCount > MaxPageCount)
+            masks.Clear();
+
+        // Collapse duplicate values in the span into masks for each page.
+        foreach (var value in span)
+        {
+            GetPageAndBit(value, out var pageIndex, out var mask);
+            if (pageIndex >= pageCount) continue;
+            masks[pageIndex] |= mask;
+        }
+
+        var pages = (ulong*)_pagesPtr;
+        for (var i = 0; i < _pageCount; i++)
+            pages[i] |= masks[i];
+
+        Recount();
     }
 
     public void Not(Span<int> span)
