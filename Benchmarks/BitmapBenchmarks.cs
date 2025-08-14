@@ -12,7 +12,6 @@ namespace IntSet.Benchmarks;
     BenchmarkLogicalGroupRule.ByCategory,
     BenchmarkLogicalGroupRule.ByParams,
     BenchmarkLogicalGroupRule.ByJob)]
-[Orderer(SummaryOrderPolicy.Method, MethodOrderPolicy.Alphabetical)]
 public class BitmapBenchmarks
 {
     [Params(10000)] public int KeyCount = 10000;
@@ -55,6 +54,12 @@ public class BitmapBenchmarks
         nativeClusteredBitmap = new NativeClusteredBitmap(aKeys);
     }
 
+    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    public HashSet<int> Allocate_HashSet_with_RandomKeys()
+    {
+        return new HashSet<int>(aKeys);
+    }
+
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
     public Bitmap Allocate_Bitmap_with_RandomKeys()
     {
@@ -67,10 +72,16 @@ public class BitmapBenchmarks
         return new ClusteredBitmap(aKeys);
     }
 
-    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
-    public HashSet<int> Allocate_HashSet()
+    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
+    public NativeClusteredBitmap Allocate_NativeClusteredBitmap_with_RandomKeys()
     {
-        return new HashSet<int>(aKeys);
+        return new NativeClusteredBitmap(aKeys);
+    }
+
+    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
+    public HashSet<int> Allocate_HashSet_with_ClusteredKeys()
+    {
+        return new HashSet<int>(clusteredKeys);
     }
 
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
@@ -86,21 +97,16 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
-    public HashSet<int> Allocate_HashSet_with_ClusteredKeys()
-    {
-        return new HashSet<int>(clusteredKeys);
-    }
-
-    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
-    public NativeClusteredBitmap Allocate_NativeClusteredBitmap_with_RandomKeys()
-    {
-        return new NativeClusteredBitmap(aKeys);
-    }
-
-    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
     public NativeClusteredBitmap Allocate_NativeClusteredBitmap_with_ClusteredKeys()
     {
         return new NativeClusteredBitmap(clusteredKeys);
+    }
+
+    [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
+    public void Contains_HashSet()
+    {
+        for (var i = 0; i < KeyCount; i++)
+            hashSet.Contains(lookupKeys[i]);
     }
 
     [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000)]
@@ -117,18 +123,18 @@ public class BitmapBenchmarks
             clusteredBitmap.IsSet(lookupKeys[i]);
     }
 
-    [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
-    public void Contains_HashSet()
-    {
-        for (var i = 0; i < KeyCount; i++)
-            hashSet.Contains(lookupKeys[i]);
-    }
-
     [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000)]
     public void Contains_NativeClusteredBitmap()
     {
         for (var i = 0; i < KeyCount; i++)
             nativeClusteredBitmap.IsSet(lookupKeys[i]);
+    }
+
+    [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
+    public void Add_HashSet()
+    {
+        for (var i = 0; i < KeyCount; i++)
+            hashSet.Add(lookupKeys[i]);
     }
 
     [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000)]
@@ -145,18 +151,20 @@ public class BitmapBenchmarks
             clusteredBitmap.Set(lookupKeys[i]);
     }
 
-    [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
-    public void Add_HashSet()
-    {
-        for (var i = 0; i < KeyCount; i++)
-            hashSet.Add(lookupKeys[i]);
-    }
 
     [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000)]
     public void Add_NativeClusteredBitmap()
     {
         for (var i = 0; i < KeyCount; i++)
             nativeClusteredBitmap.Set(lookupKeys[i]);
+    }
+
+    [BenchmarkCategory("Iterate"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    public void Iterate_HashSet()
+    {
+        var x = 0;
+        foreach (var i in hashSet)
+            x += i;
     }
 
     [BenchmarkCategory("Iterate"), Benchmark(OperationsPerInvoke = 1)]
@@ -175,20 +183,19 @@ public class BitmapBenchmarks
             x += i;
     }
 
-    [BenchmarkCategory("Iterate"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
-    public void Iterate_HashSet()
-    {
-        var x = 0;
-        foreach (var i in hashSet)
-            x += i;
-    }
-
     [BenchmarkCategory("Iterate"), Benchmark(OperationsPerInvoke = 1)]
     public void Iterate_NativeClusteredBitmap()
     {
         var x = 0;
         foreach (var i in nativeClusteredBitmap)
             x += i;
+    }
+
+    [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
+    public void Remove_HashSet()
+    {
+        for (var i = 0; i < KeyCount; i++)
+            hashSet.Remove(lookupKeys[i]);
     }
 
     [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000)]
@@ -205,18 +212,18 @@ public class BitmapBenchmarks
             clusteredBitmap.UnSet(lookupKeys[i]);
     }
 
-    [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
-    public void Remove_HashSet()
-    {
-        for (var i = 0; i < KeyCount; i++)
-            hashSet.Remove(lookupKeys[i]);
-    }
 
     [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000)]
     public void Remove_NativeClusteredBitmap()
     {
         for (var i = 0; i < KeyCount; i++)
             nativeClusteredBitmap.UnSet(lookupKeys[i]);
+    }
+
+    [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    public void ExceptWith_HashSet_to_Span()
+    {
+        hashSet.ExceptWith(bKeys);
     }
 
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -231,16 +238,10 @@ public class BitmapBenchmarks
         clusteredBitmap.Not(bKeys);
     }
 
-    [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
-    public void ExceptWith_HashSet_to_Span()
-    {
-        hashSet.ExceptWith(bKeys);
-    }
-
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void ExceptWith_Bitmap_to_Bitmap()
+    public void ExceptWith_NativeClusteredBitmap_to_Span()
     {
-        bitmap.Not(bitmapB);
+        nativeClusteredBitmap.Not(bKeys);
     }
 
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -250,9 +251,15 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void ExceptWith_NativeClusteredBitmap_to_Span()
+    public void ExceptWith_Bitmap_to_Bitmap()
     {
-        nativeClusteredBitmap.Not(bKeys);
+        bitmap.Not(bitmapB);
+    }
+
+    [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    public void IntersectWith_HashSet_to_Span()
+    {
+        hashSet.IntersectWith(bKeys);
     }
 
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -268,15 +275,9 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void IntersectWith_Bitmap_to_Bitmap()
+    public void IntersectWith_NativeClusteredBitmap_to_Span()
     {
-        bitmap.And(bitmapB);
-    }
-
-    [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
-    public void IntersectWith_HashSet_to_Span()
-    {
-        hashSet.IntersectWith(bKeys);
+        nativeClusteredBitmap.And(bKeys);
     }
 
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -286,9 +287,16 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void IntersectWith_NativeClusteredBitmap_to_Span()
+    public void IntersectWith_Bitmap_to_Bitmap()
     {
-        nativeClusteredBitmap.And(bKeys);
+        bitmap.And(bitmapB);
+    }
+
+
+    [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    public void SymmetricExceptWith_HashSet_to_Span()
+    {
+        hashSet.SymmetricExceptWith(bKeys);
     }
 
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -304,15 +312,9 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void SymmetricExceptWith_Bitmap_to_Bitmap()
+    public void SymmetricExceptWith_NativeClusteredBitmap_to_Span()
     {
-        bitmap.Xor(bitmapB);
-    }
-
-    [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
-    public void SymmetricExceptWith_HashSet_to_Span()
-    {
-        hashSet.SymmetricExceptWith(bKeys);
+        nativeClusteredBitmap.Xor(bKeys);
     }
 
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -322,9 +324,16 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void SymmetricExceptWith_NativeClusteredBitmap_to_Span()
+    public void SymmetricExceptWith_Bitmap_to_Bitmap()
     {
-        nativeClusteredBitmap.Xor(bKeys);
+        bitmap.Xor(bitmapB);
+    }
+
+
+    [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    public void UnionWith_HashSet_to_Span()
+    {
+        hashSet.UnionWith(bKeys);
     }
 
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -340,15 +349,9 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void UnionWith_Bitmap_to_Bitmap()
+    public void UnionWith_NativeClusteredBitmap_to_Span()
     {
-        bitmap.Or(bitmapB);
-    }
-
-    [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
-    public void UnionWith_HashSet_to_Span()
-    {
-        hashSet.UnionWith(bKeys);
+        nativeClusteredBitmap.Or(bKeys);
     }
 
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -358,8 +361,8 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
-    public void UnionWith_NativeClusteredBitmap_to_Span()
+    public void UnionWith_Bitmap_to_Bitmap()
     {
-        nativeClusteredBitmap.Or(bKeys);
+        bitmap.Or(bitmapB);
     }
 }

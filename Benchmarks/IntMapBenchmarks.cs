@@ -42,7 +42,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void IntMap_Add()
     {
         var map = new IntMap<int>();
@@ -53,7 +53,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void Dict_Add()
     {
         var dict = new Dictionary<int, int>();
@@ -64,7 +64,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void IntMap_Contains()
     {
         foreach(var i in lookup) 
@@ -73,7 +73,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void Dict_Contains()
     {
         foreach(var i in lookup) 
@@ -82,7 +82,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void IntMap_Remove()
     {
         foreach(var i in lookup) 
@@ -91,7 +91,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void Dict_Remove()
     {
         foreach(var i in lookup) 
@@ -100,7 +100,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void IntMap_Iteration()
     {
         foreach(var i in map.Keys) 
@@ -108,7 +108,7 @@ public class IntMapBenchmarks
         }
     }
     
-    [Benchmark()]
+    [Benchmark(OperationsPerInvoke = 1000000)]
     public void Dict_Iteration()
     {
         foreach(var i in dict) 
