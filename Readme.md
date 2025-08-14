@@ -1,117 +1,192 @@
 # IntSet
 
-IntSet is a high-performance integer set implementation for .NET, designed as a replacement for `HashSet<int>` and `Dictionary<int, T>` when you need fast operations and predictable memory usage.
+IntSet is a high-performance integer set implementation for .NET using Bitmaps.
+It is a replacement for `HashSet<int>` and `Dictionary<int, T>` when you need fast operations and predictable memory usage.
 
-Unlike `HashSet<int>`, IntSet's memory usage is dictated by the largest key value in the set, not the number of items. This makes it ideal for scenarios where you need to store many small integers efficiently, but can be pathological if you store a few keys with very large values.
 
 ## Why IntSet?
 - **Fastest possible operations**: Add, Contains, Remove, and set operations (Union, Intersect, Except, SymmetricExcept) are significantly faster than `HashSet<int>` for most workloads.
-- **Predictable memory usage**: Memory is allocated based on the largest key, not the count. For dense sets of small integers, this is extremely efficient. Usually an IntSet with 10 million items uses around 2.5 MB of memory vs the 152 MB used by HashSet.
 - **No allocations for set operations**: Most set operations do not allocate additional memory.
 
-## API Usage
-IntSet uses a Span-based API.
 
-```csharp
-var set = new IntSet();
-set.Add(1);
-set.Add(100);
-set.Contains(1); // true
-set.Remove(100);
-
-// Bulk operations with Span
-Span<int> values = stackalloc int[] { 1, 2, 3 };
-set.AddRange(values);
-set.IntersectWith(values);
-set.UnionWith(values);
-set.ExceptWith(values);
-set.SymmetricExceptWith(values);
-```
 
 ## Benchmarks
 
-### IntMap vs Dictionary
-
-| Method           | Mean        | Error       | StdDev      | Median      | Op/s     | Allocated  |
-|----------------- |------------:|------------:|------------:|------------:|---------:|-----------:|
-| IntMap_Add       | 15,001.6 μs |   316.59 μs |   892.94 μs | 15,005.5 μs |    66.66 |  7953312 B |
-| Dict_Add         | 29,555.9 μs |   973.25 μs | 2,745.06 μs | 29,262.0 μs |    33.83 | 25983264 B |
-| IntMap_Contains  |    957.9 μs |    54.06 μs |   153.35 μs |    998.5 μs | 1,043.96 |          - |
-| Dict_Contains    | 29,363.4 μs | 2,025.83 μs | 5,877.29 μs | 27,123.3 μs |    34.06 |          - |
-| IntMap_Remove    |  7,772.9 μs |   142.39 μs |   401.61 μs |  7,664.4 μs |   128.65 |          - |
-| Dict_Remove      | 19,943.4 μs |   534.14 μs | 1,506.56 μs | 19,818.6 μs |    50.14 |          - |
-| IntMap_Iteration |  1,014.0 μs |    93.37 μs |   273.83 μs |  1,143.7 μs |   986.17 |          - |
-| Dict_Iteration   |    690.4 μs |    22.09 μs |    61.21 μs |    707.2 μs | 1,448.54 |          - |
-
-
-### IntSet vs HashSet
-
-| Method                            | Mean       | Error     | StdDev     | Median     | Op/s      | Allocated |
-|---------------------------------- |-----------:|----------:|-----------:|-----------:|----------:|----------:|
-| IntSet_Contains                   |  20.410 μs | 0.2930 μs |  0.8313 μs |  20.200 μs |  48,996.4 |         - |
-| HashSet_Contains                  |  98.690 μs | 0.4036 μs |  1.0843 μs |  98.400 μs |  10,132.7 |         - |
-| IntSet_Add                        |  60.762 μs | 0.4171 μs |  1.1204 μs |  60.450 μs |  16,457.7 |         - |
-| HashSet_Add                       |  94.316 μs | 0.4887 μs |  1.2703 μs |  94.100 μs |  10,602.6 |         - |
-| IntSet_DenseValues_Iterate        |  29.728 μs | 0.7883 μs |  2.2871 μs |  29.000 μs |  33,638.5 |         - |
-| HashSet_DenseValues_Iterate       |  15.567 μs | 0.4117 μs |  1.1746 μs |  15.300 μs |  64,238.4 |         - |
-| IntSet_Remove                     |  55.401 μs | 0.3568 μs |  1.0005 μs |  55.100 μs |  18,050.2 |         - |
-| HashSet_Remove                    |  80.070 μs | 0.6005 μs |  1.6539 μs |  79.550 μs |  12,489.0 |         - |
-| IntSet_ExceptWith_Span            |  53.456 μs | 0.4827 μs |  1.3694 μs |  53.100 μs |  18,707.0 |         - |
-| IntSet_ExceptWith_IntSet          |   8.945 μs | 0.7440 μs |  2.1584 μs |   8.700 μs | 111,789.8 |         - |
-| HashSet_ExceptWith                | 120.430 μs | 2.8579 μs |  7.8234 μs | 117.600 μs |   8,303.6 |      32 B |
-| IntSet_IntersectWith_Span         |  10.413 μs | 0.0516 μs |  0.1413 μs |  10.400 μs |  96,037.1 |         - |
-| IntSet_IntersectWith_IntSet       |   6.461 μs | 0.4876 μs |  1.4377 μs |   6.300 μs | 154,774.8 |         - |
-| HashSet_IntersectWith             | 163.645 μs | 1.0931 μs |  2.9924 μs | 162.500 μs |   6,110.8 |     848 B |
-| IntSet_SymmetricExceptWith_Span   |  20.040 μs | 0.0302 μs |  0.0828 μs |  20.000 μs |  49,899.6 |         - |
-| IntSet_SymmetricExceptWith_IntSet |  11.454 μs | 0.8290 μs |  2.4442 μs |  11.300 μs |  87,305.7 |         - |
-| HashSet_SymmetricExceptWith       | 196.834 μs | 4.7433 μs | 13.2225 μs | 190.700 μs |   5,080.4 |    1664 B |
-| IntSet_UnionWith_Span             |  54.532 μs | 0.3342 μs |  0.8978 μs |  54.300 μs |  18,337.8 |         - |
-| IntSet_UnionWith_IntSet           |  11.504 μs | 0.8296 μs |  2.4069 μs |  11.500 μs |  86,925.4 |         - |
-| HashSet_UnionWith                 | 120.065 μs | 0.3118 μs |  0.8376 μs | 119.900 μs |   8,328.8 |      32 B |
-
-
-### Memory Usage
-
-| Method                                 | N        | Mean           | Error | Op/s        | Ratio | Allocated   | Alloc Ratio |
-|--------------------------------------- |--------- |---------------:|------:|------------:|------:|------------:|------------:|
-| **IntSet_MemoryUsage**                     | **10**       |       **1.100 μs** |    **NA** | **909,090.909** |  **0.52** |       **192 B** |        **0.59** |
-| DenseIdMapMemoryUsage                  | 10       |       1.500 μs |    NA | 666,666.667 |  0.71 |       192 B |        0.59 |
-| HashSet_MemoryUsage                    | 10       |       2.100 μs |    NA | 476,190.476 |  1.00 |       328 B |        1.00 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 10       |      12.100 μs |    NA |  82,644.628 |  5.76 |   2500224 B |    7,622.63 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 10       |       1.300 μs |    NA | 769,230.769 |  0.62 |       168 B |        0.51 |
-|                                        |          |                |       |             |       |             |             |
-| **IntSet_MemoryUsage**                     | **100**      |       **3.000 μs** |    **NA** | **333,333.333** |  **1.07** |       **192 B** |        **0.10** |
-| DenseIdMapMemoryUsage                  | 100      |       3.800 μs |    NA | 263,157.895 |  1.36 |       192 B |        0.10 |
-| HashSet_MemoryUsage                    | 100      |       2.800 μs |    NA | 357,142.857 |  1.00 |      1864 B |        1.00 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 100      |      11.800 μs |    NA |  84,745.763 |  4.21 |   2500224 B |    1,341.32 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 100      |       1.200 μs |    NA | 833,333.333 |  0.43 |       168 B |        0.09 |
-|                                        |          |                |       |             |       |             |             |
-| **IntSet_MemoryUsage**                     | **1000**     |      **17.000 μs** |    **NA** |  **58,823.529** |  **1.55** |       **472 B** |       **0.027** |
-| DenseIdMapMemoryUsage                  | 1000     |      17.300 μs |    NA |  57,803.468 |  1.57 |       472 B |       0.027 |
-| HashSet_MemoryUsage                    | 1000     |      11.000 μs |    NA |  90,909.091 |  1.00 |     17800 B |       1.000 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 1000     |      19.600 μs |    NA |  51,020.408 |  1.78 |   2500224 B |     140.462 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 1000     |       1.200 μs |    NA | 833,333.333 |  0.11 |       168 B |       0.009 |
-|                                        |          |                |       |             |       |             |             |
-| **IntSet_MemoryUsage**                     | **10000**    |      **46.300 μs** |    **NA** |  **21,598.272** |  **0.51** |      **8248 B** |       **0.051** |
-| DenseIdMapMemoryUsage                  | 10000    |      45.100 μs |    NA |  22,172.949 |  0.49 |      8248 B |       0.051 |
-| HashSet_MemoryUsage                    | 10000    |      91.300 μs |    NA |  10,952.903 |  1.00 |    161800 B |       1.000 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 10000    |      12.600 μs |    NA |  79,365.079 |  0.14 |   2500224 B |      15.453 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 10000    |       1.400 μs |    NA | 714,285.714 |  0.02 |       168 B |       0.001 |
-|                                        |          |                |       |             |       |             |             |
-| **IntSet_MemoryUsage**                     | **100000**   |     **340.200 μs** |    **NA** |   **2,939.447** | **0.328** |     **65664 B** |       **0.038** |
-| DenseIdMapMemoryUsage                  | 100000   |     280.200 μs |    NA |   3,568.879 | 0.270 |     65664 B |       0.038 |
-| HashSet_MemoryUsage                    | 100000   |   1,037.500 μs |    NA |     963.855 | 1.000 |   1738248 B |       1.000 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 100000   |      13.900 μs |    NA |  71,942.446 | 0.013 |   2500224 B |       1.438 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 100000   |       1.100 μs |    NA | 909,090.909 | 0.001 |       168 B |       0.000 |
-|                                        |          |                |       |             |       |             |             |
-| **IntSet_MemoryUsage**                     | **1000000**  |   **2,476.900 μs** |    **NA** |     **403.730** | **0.244** |    **524488 B** |       **0.028** |
-| DenseIdMapMemoryUsage                  | 1000000  |   3,375.400 μs |    NA |     296.261 | 0.332 |    524488 B |       0.028 |
-| HashSet_MemoryUsage                    | 1000000  |  10,159.700 μs |    NA |      98.428 | 1.000 |  18603144 B |       1.000 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 1000000  |      23.600 μs |    NA |  42,372.881 | 0.002 |   2500224 B |       0.134 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 1000000  |       1.600 μs |    NA | 625,000.000 | 0.000 |       168 B |       0.000 |
-|                                        |          |                |       |             |       |             |             |
-| **IntSet_MemoryUsage**                     | **10000000** |  **26,267.900 μs** |    **NA** |      **38.069** | **0.257** |   **8388904 B** |       **0.052** |
-| DenseIdMapMemoryUsage                  | 10000000 |  24,824.800 μs |    NA |      40.282 | 0.242 |   8388904 B |       0.052 |
-| HashSet_MemoryUsage                    | 10000000 | 102,408.800 μs |    NA |       9.765 | 1.000 | 160000456 B |       1.000 |
-| IntSet_MemoryUsage_2KeysExtremeValues  | 10000000 |      28.100 μs |    NA |  35,587.189 | 0.000 |   2500224 B |       0.016 |
-| HashSet_MemoryUsage_2KeysExtremeValues | 10000000 |       3.200 μs |    NA | 312,500.000 | 0.000 |       168 B |       0.000 |
+| Method                                         | N      | Mean           | Error         | StdDev        | Median         | Op/s        | Allocated |
+|----------------------------------------------- |------- |---------------:|--------------:|--------------:|---------------:|------------:|----------:|
+| MemoryUsed_Bitmap                              | 100    |     3,109.8 ns |     105.50 ns |     306.07 ns |     3,150.0 ns |   321,564.7 |     184 B |
+| MemoryUsed_ClusteredBitmap                     | 100    |     3,464.3 ns |     131.19 ns |     382.68 ns |     3,450.0 ns |   288,659.8 |     192 B |
+| MemoryUsed_HashSet                             | 100    |     3,025.0 ns |     162.57 ns |     469.04 ns |     3,050.0 ns |   330,578.5 |    1864 B |
+| MemoryUsed_ClusteredKeys_Bitmap                | 100    |    13,858.6 ns |   1,433.10 ns |   4,203.04 ns |    11,900.0 ns |    72,157.4 | 1250224 B |
+| MemoryUsed_ClusteredKeys_ClusteredBitmap       | 100    |     3,389.6 ns |     157.23 ns |     453.64 ns |     3,500.0 ns |   295,021.5 |     192 B |
+| MemoryUsed_ClusteredKeys_HashSet               | 100    |     2,929.6 ns |     172.30 ns |     502.61 ns |     2,900.0 ns |   341,344.5 |    1864 B |
+| MemoryUsed_NativeClusteredBitmap               | 100    |     3,972.2 ns |     182.71 ns |     530.08 ns |     4,000.0 ns |   251,751.9 |      48 B |
+| MemoryUsed_ClusteredKeys_NativeClusteredBitmap | 100    |     3,941.7 ns |     179.76 ns |     518.64 ns |     3,950.0 ns |   253,699.8 |      48 B |
+| Contains_Bitmap                                | 100    |     1,501.0 ns |     101.06 ns |     294.80 ns |     1,400.0 ns |   666,213.5 |         - |
+| Contains_ClusteredBitmap                       | 100    |     1,940.4 ns |     139.48 ns |     409.06 ns |     1,800.0 ns |   515,356.6 |         - |
+| Contains_HashSet                               | 100    |     1,729.0 ns |      99.76 ns |     294.15 ns |     1,650.0 ns |   578,369.0 |         - |
+| Contains_NativeClusteredBitmap                 | 100    |     1,913.1 ns |     112.94 ns |     331.25 ns |     1,800.0 ns |   522,703.3 |         - |
+| Add_Bitmap                                     | 100    |     1,882.8 ns |      91.65 ns |     268.80 ns |     1,800.0 ns |   531,115.9 |         - |
+| Add_ClusteredBitmap                            | 100    |     2,155.0 ns |     103.21 ns |     304.30 ns |     2,050.0 ns |   464,037.1 |         - |
+| Add_HashSet                                    | 100    |     1,686.7 ns |      96.92 ns |     282.71 ns |     1,600.0 ns |   592,861.5 |         - |
+| Add_NativeClusteredBitmap                      | 100    |     2,085.0 ns |      99.77 ns |     294.18 ns |     2,000.0 ns |   479,616.3 |         - |
+| Iterate_Bitmap                                 | 100    |     1,138.5 ns |      27.25 ns |      78.63 ns |     1,100.0 ns |   878,316.6 |         - |
+| Iterate_ClusteredBitmap                        | 100    |     1,236.8 ns |      37.83 ns |     103.56 ns |     1,300.0 ns |   808,550.2 |         - |
+| Iterate_HashSet                                | 100    |       705.1 ns |      42.74 ns |     124.66 ns |       700.0 ns | 1,418,234.4 |         - |
+| Iterate_NativeClusteredBitmap                  | 100    |     1,242.6 ns |      27.43 ns |      78.27 ns |     1,300.0 ns |   804,794.5 |         - |
+| Remove_Bitmap                                  | 100    |     2,047.5 ns |     101.28 ns |     297.04 ns |     1,900.0 ns |   488,406.5 |         - |
+| Remove_ClusteredBitmap                         | 100    |     2,218.2 ns |     109.07 ns |     319.87 ns |     2,100.0 ns |   450,819.7 |         - |
+| Remove_HashSet                                 | 100    |     1,676.5 ns |     101.34 ns |     295.60 ns |     1,600.0 ns |   596,469.9 |         - |
+| Remove_NativeClusteredBitmap                   | 100    |     2,430.9 ns |      83.45 ns |     242.11 ns |     2,400.0 ns |   411,365.6 |         - |
+| ExceptWith_Span_Bitmap                         | 100    |     2,102.0 ns |      94.30 ns |     275.07 ns |     2,000.0 ns |   475,728.2 |         - |
+| ExceptWith_Span_ClusteredBitmap                | 100    |     2,126.6 ns |      51.44 ns |     133.69 ns |     2,100.0 ns |   470,238.1 |         - |
+| ExceptWith_Bitmap_Bitmap                       | 100    |       304.0 ns |      34.42 ns |     100.93 ns |       300.0 ns | 3,289,036.5 |         - |
+| ExceptWith_HashSet                             | 100    |     4,501.0 ns |     140.29 ns |     411.44 ns |     4,400.0 ns |   222,172.4 |      32 B |
+| ExceptWith_Span_NativeClusteredBitmap          | 100    |     2,361.2 ns |      52.83 ns |     138.25 ns |     2,400.0 ns |   423,504.5 |         - |
+| IntersectWith_Span_Bitmap                      | 100    |       276.0 ns |      24.51 ns |      70.70 ns |       300.0 ns | 3,622,641.5 |         - |
+| IntersectWith_Span_ClusteredBitmap             | 100    |       277.3 ns |      16.68 ns |      42.15 ns |       300.0 ns | 3,605,769.2 |         - |
+| IntersectWith_Bitmap_Bitmap                    | 100    |       249.5 ns |      27.79 ns |      79.73 ns |       200.0 ns | 4,008,438.8 |         - |
+| IntersectWith_HashSet                          | 100    |     3,320.8 ns |     190.03 ns |     548.28 ns |     3,200.0 ns |   301,129.2 |      32 B |
+| IntersectWith_Span_NativeClusteredBitmap       | 100    |       362.2 ns |      28.50 ns |      83.13 ns |       400.0 ns | 2,760,563.4 |         - |
+| SymmetricExceptWith_Span_Bitmap                | 100    |       310.0 ns |      31.79 ns |      93.74 ns |       300.0 ns | 3,225,806.5 |         - |
+| SymmetricExceptWith_Span_ClusteredBitmap       | 100    |       367.0 ns |      22.09 ns |      64.10 ns |       400.0 ns | 2,724,719.1 |         - |
+| SymmetricExceptWith_Bitmap_Bitmap              | 100    |       395.9 ns |      50.66 ns |     147.78 ns |       400.0 ns | 2,525,773.2 |         - |
+| SymmetricExceptWith_HashSet                    | 100    |     2,942.4 ns |     128.51 ns |     376.91 ns |     2,900.0 ns |   339,855.8 |      32 B |
+| SymmetricExceptWith_Span_NativeClusteredBitmap | 100    |       409.0 ns |      32.01 ns |      94.38 ns |       400.0 ns | 2,444,987.8 |         - |
+| UnionWith_Span_Bitmap                          | 100    |     2,138.4 ns |      87.09 ns |     255.43 ns |     2,200.0 ns |   467,642.9 |         - |
+| UnionWith_Span_ClusteredBitmap                 | 100    |     2,276.0 ns |      96.06 ns |     283.24 ns |     2,400.0 ns |   439,367.3 |         - |
+| UnionWith_Bitmap_Bitmap                        | 100    |       234.0 ns |      27.20 ns |      78.91 ns |       200.0 ns | 4,273,127.8 |         - |
+| UnionWith_HashSet                              | 100    |     2,328.4 ns |      95.20 ns |     273.15 ns |     2,300.0 ns |   429,475.6 |      32 B |
+| UnionWith_Span_NativeClusteredBitmap           | 100    |     2,154.0 ns |      96.70 ns |     285.13 ns |     2,200.0 ns |   464,252.6 |         - |
+| MemoryUsed_Bitmap                              | 1000   |    21,141.8 ns |     232.58 ns |     652.19 ns |    20,900.0 ns |    47,299.8 |     184 B |
+| MemoryUsed_ClusteredBitmap                     | 1000   |    23,225.6 ns |     290.67 ns |     810.27 ns |    22,900.0 ns |    43,056.0 |     472 B |
+| MemoryUsed_HashSet                             | 1000   |    21,784.8 ns |   1,941.04 ns |   5,692.73 ns |    24,200.0 ns |    45,903.5 |   17800 B |
+| MemoryUsed_ClusteredKeys_Bitmap                | 1000   |   268,064.9 ns |   7,840.29 ns |  22,368.79 ns |   257,800.0 ns |     3,730.4 | 3750544 B |
+| MemoryUsed_ClusteredKeys_ClusteredBitmap       | 1000   |    23,438.7 ns |     269.67 ns |     765.00 ns |    23,100.0 ns |    42,664.5 |     472 B |
+| MemoryUsed_ClusteredKeys_HashSet               | 1000   |    25,545.9 ns |   2,983.68 ns |   8,703.53 ns |    26,800.0 ns |    39,145.2 |   17800 B |
+| MemoryUsed_NativeClusteredBitmap               | 1000   |    25,080.4 ns |   1,199.88 ns |   3,481.07 ns |    23,500.0 ns |    39,871.8 |      48 B |
+| MemoryUsed_ClusteredKeys_NativeClusteredBitmap | 1000   |    22,231.5 ns |     294.07 ns |     814.86 ns |    22,000.0 ns |    44,981.3 |      48 B |
+| Contains_Bitmap                                | 1000   |    14,178.6 ns |     498.71 ns |   1,454.76 ns |    13,800.0 ns |    70,529.0 |         - |
+| Contains_ClusteredBitmap                       | 1000   |    15,371.4 ns |     451.63 ns |   1,266.43 ns |    15,100.0 ns |    65,055.8 |         - |
+| Contains_HashSet                               | 1000   |    16,338.0 ns |     407.61 ns |   1,149.66 ns |    16,100.0 ns |    61,206.8 |         - |
+| Contains_NativeClusteredBitmap                 | 1000   |    16,520.4 ns |     455.02 ns |   1,290.82 ns |    16,300.0 ns |    60,531.1 |         - |
+| Add_Bitmap                                     | 1000   |    18,693.8 ns |     486.16 ns |   1,402.69 ns |    18,400.0 ns |    53,493.8 |         - |
+| Add_ClusteredBitmap                            | 1000   |    20,505.1 ns |     507.50 ns |   1,480.41 ns |    20,100.0 ns |    48,768.4 |         - |
+| Add_HashSet                                    | 1000   |    16,343.2 ns |     586.36 ns |   1,682.36 ns |    15,900.0 ns |    61,187.7 |         - |
+| Add_NativeClusteredBitmap                      | 1000   |    19,159.1 ns |     469.96 ns |   1,333.21 ns |    18,900.0 ns |    52,194.4 |         - |
+| Iterate_Bitmap                                 | 1000   |    10,948.4 ns |     534.83 ns |   1,499.73 ns |    10,400.0 ns |    91,338.0 |         - |
+| Iterate_ClusteredBitmap                        | 1000   |    11,779.8 ns |     475.82 ns |   1,318.50 ns |    11,500.0 ns |    84,891.3 |         - |
+| Iterate_HashSet                                | 1000   |     5,583.0 ns |     323.01 ns |     952.41 ns |     5,200.0 ns |   179,115.2 |         - |
+| Iterate_NativeClusteredBitmap                  | 1000   |    12,328.3 ns |     604.73 ns |   1,773.56 ns |    11,600.0 ns |    81,114.3 |         - |
+| Remove_Bitmap                                  | 1000   |    19,657.8 ns |     465.71 ns |   1,298.23 ns |    19,300.0 ns |    50,870.4 |         - |
+| Remove_ClusteredBitmap                         | 1000   |    21,568.5 ns |     611.82 ns |   1,695.35 ns |    21,100.0 ns |    46,363.8 |         - |
+| Remove_HashSet                                 | 1000   |    20,936.2 ns |     850.59 ns |   2,426.77 ns |    21,700.0 ns |    47,764.2 |         - |
+| Remove_NativeClusteredBitmap                   | 1000   |    28,018.2 ns |   1,424.23 ns |   4,177.01 ns |    27,000.0 ns |    35,691.1 |         - |
+| ExceptWith_Span_Bitmap                         | 1000   |    19,401.1 ns |     517.84 ns |   1,460.58 ns |    18,950.0 ns |    51,543.5 |         - |
+| ExceptWith_Span_ClusteredBitmap                | 1000   |    21,454.8 ns |     439.19 ns |   1,245.91 ns |    21,400.0 ns |    46,609.5 |         - |
+| ExceptWith_Bitmap_Bitmap                       | 1000   |       601.2 ns |      46.54 ns |     125.83 ns |       600.0 ns | 1,663,405.1 |         - |
+| ExceptWith_HashSet                             | 1000   |    45,375.0 ns |   1,403.99 ns |   3,959.98 ns |    46,450.0 ns |    22,038.6 |      32 B |
+| ExceptWith_Span_NativeClusteredBitmap          | 1000   |    22,916.8 ns |     417.92 ns |   1,199.08 ns |    22,700.0 ns |    43,636.0 |         - |
+| IntersectWith_Span_Bitmap                      | 1000   |       913.5 ns |      32.73 ns |      90.69 ns |       900.0 ns | 1,094,710.9 |         - |
+| IntersectWith_Span_ClusteredBitmap             | 1000   |     1,241.3 ns |      24.74 ns |      69.78 ns |     1,200.0 ns |   805,604.2 |         - |
+| IntersectWith_Bitmap_Bitmap                    | 1000   |       518.8 ns |      31.52 ns |      85.21 ns |       500.0 ns | 1,927,437.6 |         - |
+| IntersectWith_HashSet                          | 1000   |    22,385.0 ns |   1,315.45 ns |   3,878.65 ns |    24,150.0 ns |    44,672.8 |      32 B |
+| IntersectWith_Span_NativeClusteredBitmap       | 1000   |     1,244.6 ns |      23.72 ns |      66.90 ns |     1,200.0 ns |   803,493.4 |         - |
+| SymmetricExceptWith_Span_Bitmap                | 1000   |     1,016.8 ns |      26.25 ns |      75.30 ns |     1,000.0 ns |   983,436.9 |         - |
+| SymmetricExceptWith_Span_ClusteredBitmap       | 1000   |     1,432.2 ns |      31.74 ns |      88.47 ns |     1,400.0 ns |   698,215.7 |         - |
+| SymmetricExceptWith_Bitmap_Bitmap              | 1000   |       694.8 ns |      70.95 ns |     205.84 ns |       600.0 ns | 1,439,169.1 |         - |
+| SymmetricExceptWith_HashSet                    | 1000   |    18,670.2 ns |     127.66 ns |     364.21 ns |    18,600.0 ns |    53,561.3 |      32 B |
+| SymmetricExceptWith_Span_NativeClusteredBitmap | 1000   |     2,804.3 ns |      70.46 ns |     201.03 ns |     2,800.0 ns |   356,600.9 |         - |
+| UnionWith_Span_Bitmap                          | 1000   |    18,207.5 ns |     308.50 ns |     875.17 ns |    18,000.0 ns |    54,922.3 |         - |
+| UnionWith_Span_ClusteredBitmap                 | 1000   |    24,834.3 ns |   1,421.27 ns |   4,168.35 ns |    25,400.0 ns |    40,266.8 |         - |
+| UnionWith_Bitmap_Bitmap                        | 1000   |       631.6 ns |      68.45 ns |     196.38 ns |       600.0 ns | 1,583,333.3 |         - |
+| UnionWith_HashSet                              | 1000   |    13,143.2 ns |     187.50 ns |     493.95 ns |    13,000.0 ns |    76,084.9 |      32 B |
+| UnionWith_Span_NativeClusteredBitmap           | 1000   |    18,672.4 ns |     281.62 ns |     770.94 ns |    18,400.0 ns |    53,554.9 |         - |
+| MemoryUsed_Bitmap                              | 10000  |    55,087.1 ns |     561.09 ns |   1,516.95 ns |    54,600.0 ns |    18,153.1 |    3928 B |
+| MemoryUsed_ClusteredBitmap                     | 10000  |    63,423.5 ns |     577.62 ns |   1,561.64 ns |    62,800.0 ns |    15,767.0 |    6808 B |
+| MemoryUsed_HashSet                             | 10000  |   135,551.6 ns |   1,487.35 ns |   4,170.70 ns |   134,700.0 ns |     7,377.3 |  161800 B |
+| MemoryUsed_ClusteredKeys_Bitmap                | 10000  |   307,520.5 ns |   6,633.36 ns |  18,270.21 ns |   304,400.0 ns |     3,251.8 | 3753280 B |
+| MemoryUsed_ClusteredKeys_ClusteredBitmap       | 10000  |    61,822.2 ns |     360.89 ns |   1,006.02 ns |    61,500.0 ns |    16,175.4 |    5208 B |
+| MemoryUsed_ClusteredKeys_HashSet               | 10000  |   131,151.1 ns |     719.14 ns |   2,028.34 ns |   130,500.0 ns |     7,624.8 |  161800 B |
+| MemoryUsed_NativeClusteredBitmap               | 10000  |    60,764.0 ns |     516.14 ns |   1,430.21 ns |    60,300.0 ns |    16,457.1 |      48 B |
+| MemoryUsed_ClusteredKeys_NativeClusteredBitmap | 10000  |    62,159.7 ns |     530.85 ns |   1,505.93 ns |    61,750.0 ns |    16,087.6 |      48 B |
+| Contains_Bitmap                                | 10000  |    20,254.4 ns |     284.16 ns |     792.12 ns |    20,100.0 ns |    49,371.9 |         - |
+| Contains_ClusteredBitmap                       | 10000  |    23,687.6 ns |     259.43 ns |     718.87 ns |    23,600.0 ns |    42,216.1 |         - |
+| Contains_HashSet                               | 10000  |    98,689.4 ns |     571.91 ns |   1,546.20 ns |    98,300.0 ns |    10,132.8 |         - |
+| Contains_NativeClusteredBitmap                 | 10000  |    29,416.2 ns |   2,480.53 ns |   7,274.96 ns |    25,400.0 ns |    33,994.9 |         - |
+| Add_Bitmap                                     | 10000  |    49,841.8 ns |     357.61 ns |   1,002.78 ns |    49,500.0 ns |    20,063.5 |         - |
+| Add_ClusteredBitmap                            | 10000  |    56,263.0 ns |     591.07 ns |   1,667.12 ns |    55,700.0 ns |    17,773.7 |         - |
+| Add_HashSet                                    | 10000  |    94,625.0 ns |     398.49 ns |   1,070.51 ns |    94,400.0 ns |    10,568.0 |         - |
+| Add_NativeClusteredBitmap                      | 10000  |    59,522.1 ns |   2,203.83 ns |   5,995.69 ns |    57,000.0 ns |    16,800.5 |         - |
+| Iterate_Bitmap                                 | 10000  |    25,052.1 ns |     783.01 ns |   2,259.16 ns |    24,550.0 ns |    39,916.8 |         - |
+| Iterate_ClusteredBitmap                        | 10000  |    28,806.3 ns |     564.92 ns |   1,620.86 ns |    28,400.0 ns |    34,714.6 |         - |
+| Iterate_HashSet                                | 10000  |    14,973.6 ns |     272.36 ns |     763.74 ns |    14,900.0 ns |    66,784.1 |         - |
+| Iterate_NativeClusteredBitmap                  | 10000  |    30,156.8 ns |     784.49 ns |   2,160.71 ns |    29,200.0 ns |    33,160.0 |         - |
+| Remove_Bitmap                                  | 10000  |    54,518.5 ns |     550.66 ns |   1,553.16 ns |    54,100.0 ns |    18,342.4 |         - |
+| Remove_ClusteredBitmap                         | 10000  |    59,181.3 ns |     509.41 ns |   1,428.43 ns |    58,700.0 ns |    16,897.2 |         - |
+| Remove_HashSet                                 | 10000  |    79,588.8 ns |     562.73 ns |   1,559.31 ns |    79,000.0 ns |    12,564.6 |         - |
+| Remove_NativeClusteredBitmap                   | 10000  |    65,662.9 ns |     323.44 ns |     896.25 ns |    65,400.0 ns |    15,229.3 |         - |
+| ExceptWith_Span_Bitmap                         | 10000  |    52,608.6 ns |     380.68 ns |   1,079.92 ns |    52,500.0 ns |    19,008.3 |         - |
+| ExceptWith_Span_ClusteredBitmap                | 10000  |    58,246.2 ns |     397.41 ns |   1,114.38 ns |    57,900.0 ns |    17,168.5 |         - |
+| ExceptWith_Bitmap_Bitmap                       | 10000  |     3,624.0 ns |     376.93 ns |   1,111.38 ns |     4,400.0 ns |   275,938.2 |         - |
+| ExceptWith_HashSet                             | 10000  |   114,096.5 ns |     488.36 ns |   1,320.30 ns |   114,000.0 ns |     8,764.5 |      32 B |
+| ExceptWith_Span_NativeClusteredBitmap          | 10000  |    60,471.4 ns |     391.39 ns |   1,097.50 ns |    60,200.0 ns |    16,536.7 |         - |
+| IntersectWith_Span_Bitmap                      | 10000  |     7,161.2 ns |      43.50 ns |     117.61 ns |     7,100.0 ns |   139,641.9 |         - |
+| IntersectWith_Span_ClusteredBitmap             | 10000  |    10,303.2 ns |      36.92 ns |     104.73 ns |    10,300.0 ns |    97,057.0 |         - |
+| IntersectWith_Bitmap_Bitmap                    | 10000  |     3,647.5 ns |     375.45 ns |   1,101.14 ns |     4,400.0 ns |   274,162.3 |         - |
+| IntersectWith_HashSet                          | 10000  |   172,972.4 ns |   1,058.51 ns |   2,897.66 ns |   172,200.0 ns |     5,781.3 |     840 B |
+| IntersectWith_Span_NativeClusteredBitmap       | 10000  |    10,340.5 ns |      28.96 ns |      77.80 ns |    10,300.0 ns |    96,707.3 |         - |
+| SymmetricExceptWith_Span_Bitmap                | 10000  |     7,702.4 ns |      46.36 ns |     125.33 ns |     7,700.0 ns |   129,830.5 |         - |
+| SymmetricExceptWith_Span_ClusteredBitmap       | 10000  |    12,622.4 ns |      55.74 ns |     150.69 ns |    12,600.0 ns |    79,224.5 |         - |
+| SymmetricExceptWith_Bitmap_Bitmap              | 10000  |     3,989.0 ns |     384.34 ns |   1,133.23 ns |     4,600.0 ns |   250,689.4 |         - |
+| SymmetricExceptWith_HashSet                    | 10000  |   212,267.7 ns |  10,755.06 ns |  30,510.32 ns |   195,300.0 ns |     4,711.0 |    1648 B |
+| SymmetricExceptWith_Span_NativeClusteredBitmap | 10000  |    24,418.2 ns |     351.09 ns |   1,029.70 ns |    24,000.0 ns |    40,953.1 |         - |
+| UnionWith_Span_Bitmap                          | 10000  |    47,767.4 ns |     319.27 ns |     868.59 ns |    47,600.0 ns |    20,934.8 |         - |
+| UnionWith_Span_ClusteredBitmap                 | 10000  |    51,220.5 ns |     263.15 ns |     724.79 ns |    51,100.0 ns |    19,523.5 |         - |
+| UnionWith_Bitmap_Bitmap                        | 10000  |     3,583.0 ns |     392.39 ns |   1,156.98 ns |     4,400.0 ns |   279,095.7 |         - |
+| UnionWith_HashSet                              | 10000  |   120,654.2 ns |     218.01 ns |     581.90 ns |   120,600.0 ns |     8,288.1 |      32 B |
+| UnionWith_Span_NativeClusteredBitmap           | 10000  |    51,098.9 ns |     278.30 ns |     780.38 ns |    51,000.0 ns |    19,569.9 |         - |
+| MemoryUsed_Bitmap                              | 100000 |   377,688.4 ns |   6,320.94 ns |  17,196.58 ns |   372,350.0 ns |     2,647.7 |   37168 B |
+| MemoryUsed_ClusteredBitmap                     | 100000 |   446,460.6 ns |   7,609.40 ns |  22,317.05 ns |   452,000.0 ns |     2,239.8 |   65672 B |
+| MemoryUsed_HashSet                             | 100000 | 2,174,214.0 ns | 264,013.04 ns | 778,448.47 ns | 1,776,000.0 ns |       459.9 | 1738248 B |
+| MemoryUsed_ClusteredKeys_Bitmap                | 100000 |   628,739.4 ns |  15,300.22 ns |  43,652.40 ns |   626,450.0 ns |     1,590.5 | 3780688 B |
+| MemoryUsed_ClusteredKeys_ClusteredBitmap       | 100000 |   439,819.6 ns |   7,893.92 ns |  22,264.94 ns |   438,800.0 ns |     2,273.7 |   49920 B |
+| MemoryUsed_ClusteredKeys_HashSet               | 100000 | 2,514,907.0 ns | 298,686.18 ns | 880,683.01 ns | 2,825,500.0 ns |       397.6 | 1738248 B |
+| MemoryUsed_NativeClusteredBitmap               | 100000 |   458,824.4 ns |   4,965.02 ns |  13,840.49 ns |   459,250.0 ns |     2,179.5 |      48 B |
+| MemoryUsed_ClusteredKeys_NativeClusteredBitmap | 100000 |   451,550.0 ns |   3,944.79 ns |  10,461.03 ns |   450,400.0 ns |     2,214.6 |      48 B |
+| Contains_Bitmap                                | 100000 |    84,355.3 ns |   2,061.44 ns |   5,881.40 ns |    84,250.0 ns |    11,854.6 |         - |
+| Contains_ClusteredBitmap                       | 100000 |   107,729.2 ns |   1,824.49 ns |   5,055.65 ns |   109,100.0 ns |     9,282.5 |         - |
+| Contains_HashSet                               | 100000 | 1,203,021.3 ns |  50,328.39 ns | 143,589.74 ns | 1,191,900.0 ns |       831.2 |         - |
+| Contains_NativeClusteredBitmap                 | 100000 |    96,039.8 ns |   2,181.82 ns |   6,189.46 ns |    96,800.0 ns |    10,412.4 |         - |
+| Add_Bitmap                                     | 100000 |   339,171.6 ns |   2,982.57 ns |   8,214.87 ns |   339,100.0 ns |     2,948.4 |         - |
+| Add_ClusteredBitmap                            | 100000 |   396,226.7 ns |   3,266.38 ns |   8,886.43 ns |   395,600.0 ns |     2,523.8 |         - |
+| Add_HashSet                                    | 100000 | 1,354,593.3 ns |  86,166.75 ns | 240,198.48 ns | 1,312,850.0 ns |       738.2 |         - |
+| Add_NativeClusteredBitmap                      | 100000 |   408,128.9 ns |   4,704.25 ns |  13,113.57 ns |   408,050.0 ns |     2,450.2 |         - |
+| Iterate_Bitmap                                 | 100000 |    98,786.8 ns |   2,135.53 ns |   5,988.25 ns |    96,200.0 ns |    10,122.8 |         - |
+| Iterate_ClusteredBitmap                        | 100000 |   130,888.7 ns |   2,436.21 ns |   7,067.88 ns |   130,600.0 ns |     7,640.1 |         - |
+| Iterate_HashSet                                | 100000 |    87,076.3 ns |   1,989.40 ns |   5,643.59 ns |    85,500.0 ns |    11,484.2 |         - |
+| Iterate_NativeClusteredBitmap                  | 100000 |   132,497.9 ns |   2,378.03 ns |   6,823.02 ns |   129,100.0 ns |     7,547.3 |         - |
+| Remove_Bitmap                                  | 100000 |   391,269.7 ns |   2,298.13 ns |   6,368.11 ns |   391,800.0 ns |     2,555.8 |         - |
+| Remove_ClusteredBitmap                         | 100000 |   423,479.1 ns |   2,525.27 ns |   6,870.19 ns |   422,800.0 ns |     2,361.4 |         - |
+| Remove_HashSet                                 | 100000 |   880,876.7 ns |  31,623.75 ns |  86,034.75 ns |   842,950.0 ns |     1,135.2 |         - |
+| Remove_NativeClusteredBitmap                   | 100000 |   486,529.2 ns |   3,618.72 ns |  10,027.45 ns |   488,300.0 ns |     2,055.4 |         - |
+| ExceptWith_Span_Bitmap                         | 100000 |   378,186.2 ns |   2,623.24 ns |   7,181.07 ns |   377,600.0 ns |     2,644.2 |         - |
+| ExceptWith_Span_ClusteredBitmap                | 100000 |   420,373.9 ns |   2,670.29 ns |   7,354.76 ns |   419,600.0 ns |     2,378.8 |         - |
+| ExceptWith_Bitmap_Bitmap                       | 100000 |    11,020.0 ns |     342.03 ns |     953.43 ns |    10,800.0 ns |    90,744.1 |         - |
+| ExceptWith_HashSet                             | 100000 | 1,233,743.7 ns |  36,861.49 ns | 100,907.75 ns | 1,189,500.0 ns |       810.5 |      32 B |
+| ExceptWith_Span_NativeClusteredBitmap          | 100000 |   424,169.0 ns |   3,051.17 ns |   8,352.54 ns |   425,500.0 ns |     2,357.6 |         - |
+| IntersectWith_Span_Bitmap                      | 100000 |    69,518.8 ns |     461.68 ns |   1,248.19 ns |    69,200.0 ns |    14,384.6 |         - |
+| IntersectWith_Span_ClusteredBitmap             | 100000 |   104,725.9 ns |     610.00 ns |   1,649.18 ns |   104,200.0 ns |     9,548.7 |         - |
+| IntersectWith_Bitmap_Bitmap                    | 100000 |    10,934.1 ns |     538.65 ns |   1,510.42 ns |    10,500.0 ns |    91,457.3 |         - |
+| IntersectWith_HashSet                          | 100000 | 2,196,136.1 ns | 123,530.70 ns | 358,384.98 ns | 2,036,200.0 ns |       455.3 |    7960 B |
+| IntersectWith_Span_NativeClusteredBitmap       | 100000 |   104,124.4 ns |     378.31 ns |   1,029.21 ns |   104,000.0 ns |     9,603.9 |         - |
+| SymmetricExceptWith_Span_Bitmap                | 100000 |    76,505.4 ns |     795.59 ns |   2,243.98 ns |    75,800.0 ns |    13,071.0 |         - |
+| SymmetricExceptWith_Span_ClusteredBitmap       | 100000 |   127,002.3 ns |   1,086.86 ns |   2,993.52 ns |   125,900.0 ns |     7,873.9 |         - |
+| SymmetricExceptWith_Bitmap_Bitmap              | 100000 |    11,730.4 ns |     700.72 ns |   1,976.38 ns |    11,200.0 ns |    85,248.3 |         - |
+| SymmetricExceptWith_HashSet                    | 100000 | 2,723,467.0 ns | 145,712.93 ns | 415,727.23 ns | 2,565,950.0 ns |       367.2 |   15888 B |
+| SymmetricExceptWith_Span_NativeClusteredBitmap | 100000 |   230,056.2 ns |   1,312.73 ns |   3,637.56 ns |   229,100.0 ns |     4,346.8 |         - |
+| UnionWith_Span_Bitmap                          | 100000 |   301,929.2 ns |   7,929.69 ns |  22,878.98 ns |   291,250.0 ns |     3,312.0 |         - |
+| UnionWith_Span_ClusteredBitmap                 | 100000 |   347,813.6 ns |   4,175.00 ns |  11,499.16 ns |   345,600.0 ns |     2,875.1 |         - |
+| UnionWith_Bitmap_Bitmap                        | 100000 |    10,966.3 ns |     431.69 ns |   1,196.20 ns |    10,600.0 ns |    91,188.5 |         - |
+| UnionWith_HashSet                              | 100000 | 2,173,706.0 ns | 274,200.99 ns | 808,487.88 ns | 1,701,700.0 ns |       460.0 |      32 B |
+| UnionWith_Span_NativeClusteredBitmap           | 100000 |   350,316.5 ns |   5,014.82 ns |  14,548.90 ns |   351,800.0 ns |     2,854.6 |         - |

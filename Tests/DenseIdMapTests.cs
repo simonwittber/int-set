@@ -1,7 +1,7 @@
 ﻿namespace IntSet.Tests;
 
 [TestFixture]
-public class ValueMapTests
+public class DenseIdMapTests
 {
 
     [SetUp]

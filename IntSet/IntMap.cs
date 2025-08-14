@@ -29,7 +29,7 @@ public class IntMap<T>
         _values[pageIndex] ??= new T[PageSize];
     }
     
-    private readonly IntSetPaged _keys = new IntSetPaged();
+    private readonly ClusteredBitmap _keys = new ClusteredBitmap();
 
     public int Count { get; private set; }
 
@@ -42,18 +42,18 @@ public class IntMap<T>
 
     public bool Remove(int v)
     {
-        if (!_keys.Remove(v)) return false;
+        if (!_keys.UnSet(v)) return false;
         GetIndexAndSlot(v, out var pageIndex, out var slot);
         _values[pageIndex]![slot] = default(T)!;
         Count--;
         return true;
     }
 
-    public bool ContainsKey(int id) => _keys.Contains(id);
+    public bool ContainsKey(int id) => _keys.IsSet(id);
 
     public bool TryGetValue(int v, out T value)
     {
-        if (_keys.Contains(v))
+        if (_keys.IsSet(v))
         {
             GetIndexAndSlot(v, out var pageIndex, out var slot);
             value = _values[pageIndex]![slot];
@@ -66,7 +66,7 @@ public class IntMap<T>
 
     public void Add(int key, T item)
     {
-        if (_keys.Contains(key))
+        if (_keys.IsSet(key))
             throw new InvalidOperationException("Key already exists");
         this[key] = item;
     }
@@ -81,7 +81,7 @@ public class IntMap<T>
     {
         get
         {
-            if (!_keys.Contains(v))
+            if (!_keys.IsSet(v))
                 throw new KeyNotFoundException();
             GetIndexAndSlot(v, out int pageIndex, out var slot);
             return _values[pageIndex]![slot];
@@ -91,7 +91,7 @@ public class IntMap<T>
             GetIndexAndSlot(v, out int pageIndex, out var slot);
             EnsurePage(pageIndex);
             _values[pageIndex]![slot] = value;
-            if (_keys.Add(v))
+            if (_keys.Set(v))
                 Count++;
         }
     }
@@ -113,9 +113,8 @@ public class IntMap<T>
         _keys.Clear();
     }
 
-    public IEnumerator<int> GetEnumerator() => _keys.GetEnumerator();
-
     public ValueEnumerator Values => new ValueEnumerator(this);
+    public ClusteredBitmap.Enumerator Keys => _keys.GetEnumerator();
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static uint ZigZagEncode(int v) => ((uint) (v << 1)) ^ ((uint) (v >> 31));
@@ -126,7 +125,7 @@ public class IntMap<T>
         int _pageIndex;
         int _slotIndex;
         T[] activePage;
-        private IEnumerator<int> _keyEnumerator;
+        private ClusteredBitmap.Enumerator _keyEnumerator;
 
         public ValueEnumerator GetEnumerator() => this;
 

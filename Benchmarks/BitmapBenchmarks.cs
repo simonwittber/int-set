@@ -8,7 +8,7 @@ namespace IntSet.Benchmarks;
 [MemoryDiagnoser(false)]
 public class BitmapBenchmarks
 {
-    [Params(100, 1000, 10000, 100000,1000000)]
+    [Params(100, 1000, 10000, 100000)]
     public int N = 10000;
 
     protected int[] aKeys, bKeys, lookupKeys, clusteredKeys;
@@ -16,6 +16,14 @@ public class BitmapBenchmarks
     private HashSet<int> hashSet;
     private Bitmap bitmap, bitmapB;
     private ClusteredBitmap clusteredBitmap;
+    private NativeClusteredBitmap nativeClusteredBitmap; // added
+
+    [IterationSetup]
+    public void Cleanup()
+    {
+        nativeClusteredBitmap?.Dispose();
+        nativeClusteredBitmap = null;
+    }
     
     [IterationSetup]
     public void Setup()
@@ -37,6 +45,7 @@ public class BitmapBenchmarks
         bitmap = new Bitmap(aKeys);
         bitmapB = new Bitmap(bKeys);
         clusteredBitmap = new ClusteredBitmap(aKeys);
+        nativeClusteredBitmap = new NativeClusteredBitmap(aKeys); // added
     }
 
     [Benchmark]
@@ -76,6 +85,11 @@ public class BitmapBenchmarks
     }
     
     [Benchmark]
+    public NativeClusteredBitmap MemoryUsed_NativeClusteredBitmap() => new NativeClusteredBitmap(aKeys); // added
+    [Benchmark]
+    public NativeClusteredBitmap MemoryUsed_ClusteredKeys_NativeClusteredBitmap() => new NativeClusteredBitmap(clusteredKeys); // added
+    
+    [Benchmark]
     public void Contains_Bitmap()
     {
         for (var i = 0; i < N; i++)
@@ -94,6 +108,13 @@ public class BitmapBenchmarks
     {
         for (var i = 0; i < N; i++)
             hashSet.Contains(lookupKeys[i]);
+    }
+    
+    [Benchmark]
+    public void Contains_NativeClusteredBitmap() // added
+    {
+        for (var i = 0; i < N; i++)
+            nativeClusteredBitmap.IsSet(lookupKeys[i]);
     }
     
     [Benchmark]
@@ -118,6 +139,13 @@ public class BitmapBenchmarks
     }
     
     [Benchmark]
+    public void Add_NativeClusteredBitmap() // added
+    {
+        for (var i = 0; i < N; i++)
+            nativeClusteredBitmap.Set(lookupKeys[i]);
+    }
+    
+    [Benchmark]
     public void Iterate_Bitmap()
     {
         var x = 0;
@@ -132,12 +160,20 @@ public class BitmapBenchmarks
         foreach (var i in clusteredBitmap)
             x += i;
     }
-
+    
     [Benchmark()]
     public void Iterate_HashSet()
     {
         var x = 0;
         foreach (var i in hashSet)
+            x += i;
+    }
+    
+    [Benchmark]
+    public void Iterate_NativeClusteredBitmap() // added
+    {
+        var x = 0;
+        foreach (var i in nativeClusteredBitmap)
             x += i;
     }
     
@@ -160,6 +196,13 @@ public class BitmapBenchmarks
     {
         for (var i = 0; i < N; i++)
             hashSet.Remove(lookupKeys[i]);
+    }
+    
+    [Benchmark]
+    public void Remove_NativeClusteredBitmap() // added
+    {
+        for (var i = 0; i < N; i++)
+            nativeClusteredBitmap.UnSet(lookupKeys[i]);
     }
     
     [Benchmark]
@@ -187,6 +230,12 @@ public class BitmapBenchmarks
     }
     
     [Benchmark]
+    public void ExceptWith_Span_NativeClusteredBitmap() // added
+    {
+        nativeClusteredBitmap.Not(bKeys);
+    }
+    
+    [Benchmark]
     public void IntersectWith_Span_Bitmap()
     {
         bitmap.And(bKeys);
@@ -211,10 +260,17 @@ public class BitmapBenchmarks
     }
     
     [Benchmark]
+    public void IntersectWith_Span_NativeClusteredBitmap() // added
+    {
+        nativeClusteredBitmap.And(bKeys);
+    }
+    
+    [Benchmark]
     public void SymmetricExceptWith_Span_Bitmap()
     {
         bitmap.Xor(bKeys);
     }
+    
     [Benchmark]
     public void SymmetricExceptWith_Span_ClusteredBitmap()
     {
@@ -226,11 +282,17 @@ public class BitmapBenchmarks
     {
         bitmap.Xor(bitmapB);
     }
-
+    
     [Benchmark()]
     public void SymmetricExceptWith_HashSet()
     {
         hashSet.SymmetricExceptWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void SymmetricExceptWith_Span_NativeClusteredBitmap() // added
+    {
+        nativeClusteredBitmap.Xor(bKeys);
     }
     
     [Benchmark]
@@ -250,11 +312,17 @@ public class BitmapBenchmarks
     {
         bitmap.Or(bitmapB);
     }
-
+    
     [Benchmark()]
     public void UnionWith_HashSet()
     {
         hashSet.UnionWith(bKeys);
+    }
+    
+    [Benchmark]
+    public void UnionWith_Span_NativeClusteredBitmap() // added
+    {
+        nativeClusteredBitmap.Or(bKeys);
     }
     
 }

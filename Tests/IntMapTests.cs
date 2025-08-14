@@ -123,7 +123,7 @@ public class IntMapTests
             dict[keys[i]] = values[i];
         }
 
-        foreach (var i in map)
+        foreach (var i in map.Keys)
         {
             Assert.That(dict.ContainsKey(i));
         }

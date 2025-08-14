@@ -103,7 +103,7 @@ public class IntMapBenchmarks
     [Benchmark()]
     public void IntMap_Iteration()
     {
-        foreach(var i in map) 
+        foreach(var i in map.Keys) 
         {
         }
     }

@@ -8,8 +8,6 @@ namespace IntSet.Benchmarks;
 [MemoryDiagnoser(false)]
 public class DenseIdBenchmarks : IntSetBenchmarkBase
 {
-    private AllIntSetBenchmarks _allIntSetBenchmarks;
-
 
     [Benchmark]
     public void DenseIdMapContains()
@@ -32,9 +30,9 @@ public class DenseIdBenchmarks : IntSetBenchmarkBase
     }
 
     [Benchmark]
-    public IntSetPaged DenseIdMapMemoryUsage()
+    public DenseIdMap DenseIdMapMemoryUsage()
     {
-        var vm = new IntSetPaged(aKeys);
+        var vm = new DenseIdMap(aKeys);
         return vm;
     }
 

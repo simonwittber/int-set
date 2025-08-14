@@ -7,8 +7,6 @@ public abstract class IntSetBenchmarkBase
     public int N = 10000;
 
     protected int[] aKeys, bKeys, lookupKeys;
-    protected IntSetPaged IntSetPaged, IntSetPagedB;
-    protected IntSetClustered clusSet, clusSetB;
     protected HashSet<int> hashSet;
     protected DenseIdMap DenseIdMap;
     
@@ -27,10 +25,6 @@ public abstract class IntSetBenchmarkBase
         }
 
         aKeys[0] = bKeys[0];
-        IntSetPaged = new IntSetPaged(aKeys);
-        IntSetPagedB = new IntSetPaged(bKeys);
-        clusSet = new IntSetClustered(aKeys);
-        clusSetB = new IntSetClustered(bKeys);
         hashSet = new HashSet<int>(aKeys);
         DenseIdMap = new DenseIdMap(aKeys);
     }
