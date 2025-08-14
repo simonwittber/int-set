@@ -9,6 +9,8 @@ namespace IntSet;
 
 /// <summary>
 /// A set or bitmap of index values (positive integers).
+/// Use case: when values start close to zero and are positive, Eg entity id or sequential database ids. Memory used is proportional to the largest value set.
+/// If memory usage is too large, consider using the ClusteredBitmap instead.
 /// </summary>
 public class Bitmap 
 {
