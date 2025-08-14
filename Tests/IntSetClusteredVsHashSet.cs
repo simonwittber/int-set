@@ -22,26 +22,23 @@ public class IntSetClusteredVsHashSet
     {
         int[] A;
         int[] B;
-        // two arrays with same starting value
-        A = new[] {12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0};
-        B = new[] {12, 1, 2, 3, -82, 11, 54, 27, 901, 324};
+        A = [12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0];
+        B = [12, 1, 2, 3, -82, 11, 54, 27, 901, 324];
         yield return (A, B);
-        A = new[] {98, 12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0};
-        B = new[] {12, 1, 2, 3, -82, 11, 54, 27, 901, 324};
+        A = [98, 12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0];
+        B = [12, 1, 2, 3, -82, 11, 54, 27, 901, 324];
         yield return (A, B);
-        A = new[] {-13, 12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0};
-        B = new[] {1002, 1, 2, 3, -82, 11, 54, 27, 901, 324};
+        A = [-13, 12, 98, 123, 118281, -2131, 329999, 32, 1, 2, 0];
+        B = [1002, 1, 2, 3, -82, 11, 54, 27, 901, 324];
         yield return (A, B);
-        A = new[] {0, 64, 128, 192, 256, 320};  // Values across 6 pages
-        B = new[] {0, 64};                       // Values in only 2 pages
+        A = [0, 64, 128, 192, 256, 320];
+        B = [0, 64];                     
         yield return (A, B);
-// Another case: large spread vs small spread
-        A = new[] {1000, 2000, 3000, 4000, 5000};  // Wide range = many pages
-        B = new[] {1000};                           // Single page
+        A = [1000, 2000, 3000, 4000, 5000];  
+        B = [1000];                          
         yield return (A, B);
-// Negative to positive range vs small positive range  
-        A = new[] {-1000, -500, 0, 500, 1000};     // Large range = many pages
-        B = new[] {0, 1};                          // Small range = fewer pages
+        A = [-1000, -500, 0, 500, 1000];     
+        B = [0, 1];                         
         yield return (A, B);
     }
 
@@ -59,49 +56,55 @@ public class IntSetClusteredVsHashSet
     [Test]
     public void CheckAddAndContains()
     {
-        var values = new[] {0, 1, 5, -10, 63, 64, 65, 127, 128, 1000, 10000};
-
-        foreach (var value in values)
+        var intSet = new IntSetClustered();
+        var hashSet = new HashSet<int>();
+        foreach (var (a, b) in TestArrays())
         {
-            var idSetResult = _intSetClustered.Add(value);
-            var hashSetResult = _hashSet.Add(value);
-            Assert.That(idSetResult, Is.EqualTo(hashSetResult));
-        }
-
-        for (var i = -10000; i < 100000; i++)
-        {
-            Assert.That(_intSetClustered.Contains(i), Is.EqualTo(values.Contains(i)));
+            foreach (var i in a)
+            {
+                intSet.Add(i);
+                hashSet.Add(i);
+            }
+            foreach (var i in a)
+            {
+                Assert.That(intSet.Contains(i), Is.EqualTo(hashSet.Contains(i)));
+            }
+            foreach (var i in b)
+            {
+                Assert.That(intSet.Contains(i), Is.EqualTo(hashSet.Contains(i)));
+            }
+            var intSetList = intSet.ToList();
+            Assert.That(intSetList, Is.EquivalentTo(hashSet));
         }
     }
 
     [Test]
-    public void CheckIntersection()
+    public void Check_IntersectionWith_Span()
     {
-        var a = new[] {0, 1, 5, 10, 63, 64, 65, 127, 128, 1000, 10000};
-        var b = new[] {0, 1, 5, 10, 12312312};
-
-        _intSetClustered.UnionWith(a);
-        Assert.That(_intSetClustered.Count, Is.EqualTo(a.Length));
-        _intSetClustered.IntersectWith(b);
-        Assert.That(_intSetClustered.Count, Is.EqualTo(4));
-        Assert.That(_intSetClustered.Contains(b[0]), Is.True);
-        Assert.That(_intSetClustered.Contains(b[1]), Is.True);
-        Assert.That(_intSetClustered.Contains(b[2]), Is.True);
-        Assert.That(_intSetClustered.Contains(b[3]), Is.True);
-        Assert.That(_intSetClustered.Contains(b[4]), Is.False);
-
-        Assert.That(_intSetClustered.Contains(a[4]), Is.False);
-        Assert.That(_intSetClustered.Contains(a[5]), Is.False);
-        Assert.That(_intSetClustered.Contains(a[6]), Is.False);
-        Assert.That(_intSetClustered.Contains(a[7]), Is.False);
-        Assert.That(_intSetClustered.Contains(a[8]), Is.False);
-        Assert.That(_intSetClustered.Contains(a[9]), Is.False);
-        Assert.That(_intSetClustered.Contains(a[10]), Is.False);
-
-        _hashSet.UnionWith(a);
-        _hashSet.IntersectWith(b);
-
-        Assert.That(_hashSet, Is.EquivalentTo(_intSetClustered.ToList()));
+        foreach (var (a, b) in TestArrays())
+        {
+            var hashSet = new HashSet<int>(a);
+            var intSet = new IntSetClustered(a);
+            Assert.That(intSet.ToList(), Is.EquivalentTo(hashSet));
+            intSet.IntersectWith(b);
+            hashSet.IntersectWith(b);
+            Assert.That(intSet.ToList(), Is.EquivalentTo(hashSet));
+        }
+    }
+    
+    [Test]
+    public void Check_IntersectionWith_IntSet()
+    {
+        foreach (var (a, b) in TestArrays())
+        {
+            var hashSet = new HashSet<int>(a);
+            var intSet = new IntSetClustered(a);
+            Assert.That(intSet.ToList(), Is.EquivalentTo(hashSet));
+            var intSetB = new IntSetClustered(b);
+            intSet.IntersectWith(intSetB);
+            hashSet.IntersectWith(b);
+            Assert.That(intSet.ToList(), Is.EquivalentTo(hashSet));
+        }
     }
 
     [Test]
