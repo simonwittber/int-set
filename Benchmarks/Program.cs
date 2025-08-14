@@ -12,10 +12,8 @@ namespace IntegrityTables.Benchmarks
     {
         public static void Main(string[] args)
         {
-            var config = ManualConfig.Create(ManualConfig.CreateEmpty());
-            config.AddColumn(TargetMethodColumn.Method);
-            config.AddColumn(StatisticColumn.Mean);
-            config.AddColumnProvider(DefaultColumnProviders.Params);
+            var config = ManualConfig.Create(DefaultConfig.Instance);
+            
             // config.AddColumn(RankColumn.Arabic);
             // config.AddColumn(BaselineRatioColumn.RatioMean);
             
@@ -24,7 +22,7 @@ namespace IntegrityTables.Benchmarks
             //config.WithOrderer(new DefaultOrderer(SummaryOrderPolicy.Method, MethodOrderPolicy.Alphabetical));
             // config.WithOptions(ConfigOptions.DisableOptimizationsValidator);
             // BenchmarkRunner.Run<IntMapBenchmarks>(config);
-            config.WithOptions(ConfigOptions.LogBuildOutput);
+            // config.WithOptions(ConfigOptions.LogBuildOutput);
             BenchmarkSwitcher
                 .FromAssembly(typeof(Program).Assembly)
                 .Run(args, config);

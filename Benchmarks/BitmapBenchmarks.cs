@@ -8,10 +8,6 @@ namespace IntSet.Benchmarks;
 [MarkdownExporterAttribute.GitHub]
 [SimpleJob(RuntimeMoniker.Net80, launchCount: 1, warmupCount: 3, iterationCount: 100)]
 [MemoryDiagnoser(false)]
-[GroupBenchmarksBy(
-    BenchmarkLogicalGroupRule.ByCategory,
-    BenchmarkLogicalGroupRule.ByParams,
-    BenchmarkLogicalGroupRule.ByJob)]
 public class BitmapBenchmarks
 {
     [Params(10000)] public int KeyCount = 10000;
@@ -54,7 +50,7 @@ public class BitmapBenchmarks
         nativeClusteredBitmap = new NativeClusteredBitmap(aKeys);
     }
 
-    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
     public HashSet<int> Allocate_HashSet_with_RandomKeys()
     {
         return new HashSet<int>(aKeys);
@@ -102,7 +98,7 @@ public class BitmapBenchmarks
         return new NativeClusteredBitmap(clusteredKeys);
     }
 
-    [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
+    [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000)]
     public void Contains_HashSet()
     {
         for (var i = 0; i < KeyCount; i++)
@@ -130,7 +126,7 @@ public class BitmapBenchmarks
             nativeClusteredBitmap.IsSet(lookupKeys[i]);
     }
 
-    [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
+    [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000)]
     public void Add_HashSet()
     {
         for (var i = 0; i < KeyCount; i++)
@@ -159,7 +155,7 @@ public class BitmapBenchmarks
             nativeClusteredBitmap.Set(lookupKeys[i]);
     }
 
-    [BenchmarkCategory("Iterate"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    [BenchmarkCategory("Iterate"), Benchmark(OperationsPerInvoke = 1)]
     public void Iterate_HashSet()
     {
         var x = 0;
@@ -191,7 +187,7 @@ public class BitmapBenchmarks
             x += i;
     }
 
-    [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000, Baseline = true)]
+    [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000)]
     public void Remove_HashSet()
     {
         for (var i = 0; i < KeyCount; i++)
@@ -220,7 +216,7 @@ public class BitmapBenchmarks
             nativeClusteredBitmap.UnSet(lookupKeys[i]);
     }
 
-    [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
     public void ExceptWith_HashSet_to_Span()
     {
         hashSet.ExceptWith(bKeys);
@@ -256,7 +252,7 @@ public class BitmapBenchmarks
         bitmap.Not(bitmapB);
     }
 
-    [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
     public void IntersectWith_HashSet_to_Span()
     {
         hashSet.IntersectWith(bKeys);
@@ -293,7 +289,7 @@ public class BitmapBenchmarks
     }
 
 
-    [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
     public void SymmetricExceptWith_HashSet_to_Span()
     {
         hashSet.SymmetricExceptWith(bKeys);
@@ -330,7 +326,7 @@ public class BitmapBenchmarks
     }
 
 
-    [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1, Baseline = true)]
+    [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
     public void UnionWith_HashSet_to_Span()
     {
         hashSet.UnionWith(bKeys);
