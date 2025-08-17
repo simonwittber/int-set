@@ -15,7 +15,7 @@ public class BitmapBenchmarks
     protected int[] aKeys, bKeys, lookupKeys, clusteredKeys;
 
     private HashSet<int> hashSet, hashSetB;
-    private Bitmap bitmap, bitmapB;
+    private IntSet _intSet, _intSetB;
     private ClusteredBitmap clusteredBitmap;
     private NativeClusteredBitmap nativeClusteredBitmap;
 
@@ -44,8 +44,8 @@ public class BitmapBenchmarks
 
         hashSet = new HashSet<int>(aKeys);
         hashSetB = new HashSet<int>(bKeys);
-        bitmap = new Bitmap(aKeys);
-        bitmapB = new Bitmap(bKeys);
+        _intSet = new IntSet(aKeys);
+        _intSetB = new IntSet(bKeys);
         clusteredBitmap = new ClusteredBitmap(aKeys);
         nativeClusteredBitmap = new NativeClusteredBitmap(aKeys);
     }
@@ -57,9 +57,9 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
-    public Bitmap Allocate_Bitmap_with_RandomKeys()
+    public IntSet Allocate_Bitmap_with_RandomKeys()
     {
-        return new Bitmap(aKeys);
+        return new IntSet(aKeys);
     }
 
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
@@ -81,9 +81,9 @@ public class BitmapBenchmarks
     }
 
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
-    public Bitmap Allocate_Bitmap_with_ClusteredKeys()
+    public IntSet Allocate_Bitmap_with_ClusteredKeys()
     {
-        return new Bitmap(clusteredKeys);
+        return new IntSet(clusteredKeys);
     }
 
     [BenchmarkCategory("Memory"), Benchmark(OperationsPerInvoke = 1)]
@@ -109,7 +109,7 @@ public class BitmapBenchmarks
     public void Contains_Bitmap()
     {
         for (var i = 0; i < KeyCount; i++)
-            bitmap.IsSet(lookupKeys[i]);
+            _intSet.Contains(lookupKeys[i]);
     }
 
     [BenchmarkCategory("Contains"), Benchmark(OperationsPerInvoke = 10000)]
@@ -137,7 +137,7 @@ public class BitmapBenchmarks
     public void Add_Bitmap()
     {
         for (var i = 0; i < KeyCount; i++)
-            bitmap.Set(lookupKeys[i]);
+            _intSet.Add(lookupKeys[i]);
     }
 
     [BenchmarkCategory("Add"), Benchmark(OperationsPerInvoke = 10000)]
@@ -167,7 +167,7 @@ public class BitmapBenchmarks
     public void Iterate_Bitmap()
     {
         var x = 0;
-        foreach (var i in bitmap)
+        foreach (var i in _intSet)
             x += i;
     }
 
@@ -198,7 +198,7 @@ public class BitmapBenchmarks
     public void Remove_Bitmap()
     {
         for (var i = 0; i < KeyCount; i++)
-            bitmap.UnSet(lookupKeys[i]);
+            _intSet.Remove(lookupKeys[i]);
     }
 
     [BenchmarkCategory("Remove"), Benchmark(OperationsPerInvoke = 10000)]
@@ -225,7 +225,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
     public void ExceptWith_Bitmap_to_Span()
     {
-        bitmap.Not(bKeys);
+        _intSet.ExceptWith(bKeys);
     }
 
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -249,7 +249,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("ExceptWith"), Benchmark(OperationsPerInvoke = 1)]
     public void ExceptWith_Bitmap_to_Bitmap()
     {
-        bitmap.Not(bitmapB);
+        _intSet.ExceptWith(_intSetB);
     }
 
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -261,7 +261,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
     public void IntersectWith_Bitmap_to_Span()
     {
-        bitmap.And(bKeys);
+        _intSet.IntersectWith(bKeys);
     }
 
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -285,7 +285,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("InterSectWith"), Benchmark(OperationsPerInvoke = 1)]
     public void IntersectWith_Bitmap_to_Bitmap()
     {
-        bitmap.And(bitmapB);
+        _intSet.IntersectWith(_intSetB);
     }
 
 
@@ -298,7 +298,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
     public void SymmetricExceptWith_Bitmap_to_Span()
     {
-        bitmap.Xor(bKeys);
+        _intSet.SymmetricExceptWith(bKeys);
     }
 
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -322,7 +322,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("SymmetricExceptWith"), Benchmark(OperationsPerInvoke = 1)]
     public void SymmetricExceptWith_Bitmap_to_Bitmap()
     {
-        bitmap.Xor(bitmapB);
+        _intSet.SymmetricExceptWith(_intSetB);
     }
 
 
@@ -335,7 +335,7 @@ public class BitmapBenchmarks
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
     public void UnionWith_Bitmap_to_Span()
     {
-        bitmap.Or(bKeys);
+        _intSet.UnionWith(bKeys);
     }
 
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
@@ -359,6 +359,6 @@ public class BitmapBenchmarks
     [BenchmarkCategory("UnionWith"), Benchmark(OperationsPerInvoke = 1)]
     public void UnionWith_Bitmap_to_Bitmap()
     {
-        bitmap.Or(bitmapB);
+        _intSet.UnionWith(_intSetB);
     }
 }

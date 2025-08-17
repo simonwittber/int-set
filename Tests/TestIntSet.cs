@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace IntSet.Tests;
 
 [TestFixture]
-public class TestBitmap
+public class TestIntSet
 {
     [SetUp]
     public void Setup()
@@ -53,19 +53,19 @@ public class TestBitmap
     {
         foreach (var (a, b) in TestArrays())
         {
-            var bitmap = new Bitmap();
+            var bitmap = new IntSet();
             foreach(var value in a)
             {
-                bitmap.Set(value);
+                bitmap.Add(value);
             }
             foreach (var value in a)
             {
-                Assert.That(bitmap.IsSet(value), Is.True, $"Value {value} should be present in the bitmap.");
+                Assert.That(bitmap.Contains(value), Is.True, $"Value {value} should be present in the _intSet.");
             }
             var list = bitmap.ToList();
             var hashset = new HashSet<int>(a);
             Assert.That(list, Is.EquivalentTo(hashset), 
-                $"Bitmap should contain the same values as the input array {string.Join(", ", a)} but contains {string.Join(", ", list)}.");
+                $"IntSet should contain the same values as the input array {string.Join(", ", a)} but contains {string.Join(", ", list)}.");
         }
     }
     
@@ -75,32 +75,32 @@ public class TestBitmap
         foreach (var (a, b) in TestArrays())
         {
             var hashset = new HashSet<int>();
-            var bitmap = new Bitmap();
+            var bitmap = new IntSet();
             foreach(var value in a)
             {
                 var result = hashset.Add(value);
-                var testResult = bitmap.Set(value);
+                var testResult = bitmap.Add(value);
                 Assert.That(testResult, Is.EqualTo(result), 
-                    $"Set operation for value {value} should return {result} but returned {testResult}.");
+                    $"Add operation for value {value} should return {result} but returned {testResult}.");
             }
             foreach (var value in b)
             {
                 var result = hashset.Remove(value);
-                var testResult = bitmap.UnSet(value);
+                var testResult = bitmap.Remove(value);
                 Assert.That(testResult, Is.EqualTo(result), 
-                    $"UnSet operation for value {value} should return {result} but returned {testResult}.");
+                    $"Remove operation for value {value} should return {result} but returned {testResult}.");
             }
             
             hashset.ExceptWith(b);
             foreach (var value in a)
             {
-                Assert.That(bitmap.IsSet(value), Is.EqualTo(hashset.Contains(value)), 
-                    $"Value {value} should {(hashset.Contains(value) ? "" : "not ")}be present in the bitmap.");
+                Assert.That(bitmap.Contains(value), Is.EqualTo(hashset.Contains(value)), 
+                    $"Value {value} should {(hashset.Contains(value) ? "" : "not ")}be present in the _intSet.");
             }
 
             foreach (var value in b)
             {
-                Assert.That(bitmap.IsSet(value), Is.False, $"Value {value} should be present in the bitmap.");
+                Assert.That(bitmap.Contains(value), Is.False, $"Value {value} should be present in the _intSet.");
             }
         }
     }
@@ -112,10 +112,10 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
-            var bitmapB = new Bitmap(b);
+            var bitmapA = new IntSet(a);
+            var bitmapB = new IntSet(b);
             
-            bitmapA.Or(bitmapB);
+            bitmapA.UnionWith(bitmapB);
             hashset.UnionWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -130,9 +130,9 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
+            var bitmapA = new IntSet(a);
             
-            bitmapA.Or(b);
+            bitmapA.UnionWith(b);
             hashset.UnionWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -149,10 +149,10 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
-            var bitmapB = new Bitmap(b);
+            var bitmapA = new IntSet(a);
+            var bitmapB = new IntSet(b);
             
-            bitmapA.Not(bitmapB);
+            bitmapA.ExceptWith(bitmapB);
             hashset.ExceptWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -167,9 +167,9 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
+            var bitmapA = new IntSet(a);
             
-            bitmapA.Not(b);
+            bitmapA.ExceptWith(b);
             hashset.ExceptWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -184,10 +184,10 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
-            var bitmapB = new Bitmap(b);
+            var bitmapA = new IntSet(a);
+            var bitmapB = new IntSet(b);
             
-            bitmapA.And(bitmapB);
+            bitmapA.IntersectWith(bitmapB);
             hashset.IntersectWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -202,9 +202,9 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
+            var bitmapA = new IntSet(a);
             
-            bitmapA.And(b);
+            bitmapA.IntersectWith(b);
             hashset.IntersectWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -219,10 +219,10 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
-            var bitmapB = new Bitmap(b);
+            var bitmapA = new IntSet(a);
+            var bitmapB = new IntSet(b);
             
-            bitmapA.Xor(bitmapB);
+            bitmapA.SymmetricExceptWith(bitmapB);
             hashset.SymmetricExceptWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -237,9 +237,9 @@ public class TestBitmap
         {
             var hashset = new HashSet<int>(a);
             
-            var bitmapA = new Bitmap(a);
+            var bitmapA = new IntSet(a);
             
-            bitmapA.Xor(b);
+            bitmapA.SymmetricExceptWith(b);
             hashset.SymmetricExceptWith(b);
             
             Assert.That(bitmapA.ToArray(), Is.EquivalentTo(hashset));
@@ -255,10 +255,10 @@ public class TestBitmap
         foreach (var (a, b) in TestArrays())
         {
             var hashset = new HashSet<int>(a);
-            var bitmapA = new Bitmap(a);
+            var bitmapA = new IntSet(a);
             foreach (var value in bitmapA)
             {
-                Assert.That(hashset.Contains(value), Is.True, $"Value {value} should be present in the bitmap.");
+                Assert.That(hashset.Contains(value), Is.True, $"Value {value} should be present in the _intSet.");
             }
         }
     }

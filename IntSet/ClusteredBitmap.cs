@@ -5,9 +5,9 @@ using System.Runtime.CompilerServices;
 namespace IntSet;
 
 /// <summary>
-/// A set or bitmap of index values (positive integers) centered around the initial value passed into Set.
+/// A set or bitmap of index values (positive integers) centered around the initial value passed into Add.
 /// Use case: when values are very large, but are near each other, for example GetInstanceId().
-/// In this use case, Bitmap class would use a very large amount of memory, however the ClusteredBitmap class will not.
+/// In this use case, IntSet class would use a very large amount of memory, however the ClusteredBitmap class will not.
 /// This feature limits the and, not, or and xor operations to only operating on Spans, as ClusteredBitmaps with different center values are not compatible with each other.
 /// A ClusteredBitmap has the ability to work with negative and positive integers.
 /// </summary>

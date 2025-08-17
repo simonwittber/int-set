@@ -49,12 +49,12 @@ public class TestNativeNativeClusteredBitmap
             }
             foreach (var value in a)
             {
-                Assert.That(bitmap.IsSet(value), Is.True, $"Value {value} should be present in the bitmap.");
+                Assert.That(bitmap.IsSet(value), Is.True, $"Value {value} should be present in the _intSet.");
             }
             var list = bitmap.ToList();
             var hashset = new HashSet<int>(a);
             Assert.That(list, Is.EquivalentTo(hashset), 
-                $"Bitmap should contain the same values as the input array {string.Join(", ", a)} but contains {string.Join(", ", list)}.");
+                $"IntSet should contain the same values as the input array {string.Join(", ", a)} but contains {string.Join(", ", list)}.");
         }
     }
     
@@ -70,26 +70,26 @@ public class TestNativeNativeClusteredBitmap
                 var result = hashset.Add(value);
                 var testResult = bitmap.Set(value);
                 Assert.That(testResult, Is.EqualTo(result), 
-                    $"Set operation for value {value} should return {result} but returned {testResult}.");
+                    $"Add operation for value {value} should return {result} but returned {testResult}.");
             }
             foreach (var value in b)
             {
                 var result = hashset.Remove(value);
                 var testResult = bitmap.UnSet(value);
                 Assert.That(testResult, Is.EqualTo(result), 
-                    $"UnSet operation for value {value} should return {result} but returned {testResult}.");
+                    $"Remove operation for value {value} should return {result} but returned {testResult}.");
             }
             
             hashset.ExceptWith(b);
             foreach (var value in a)
             {
                 Assert.That(bitmap.IsSet(value), Is.EqualTo(hashset.Contains(value)), 
-                    $"Value {value} should {(hashset.Contains(value) ? "" : "not ")}be present in the bitmap.");
+                    $"Value {value} should {(hashset.Contains(value) ? "" : "not ")}be present in the _intSet.");
             }
 
             foreach (var value in b)
             {
-                Assert.That(bitmap.IsSet(value), Is.False, $"Value {value} should be present in the bitmap.");
+                Assert.That(bitmap.IsSet(value), Is.False, $"Value {value} should be present in the _intSet.");
             }
         }
     }
@@ -171,7 +171,7 @@ public class TestNativeNativeClusteredBitmap
             var bitmapA = new NativeClusteredBitmap(a);
             foreach (var value in bitmapA)
             {
-                Assert.That(hashset.Contains(value), Is.True, $"Value {value} should be present in the bitmap.");
+                Assert.That(hashset.Contains(value), Is.True, $"Value {value} should be present in the _intSet.");
             }
         }
     }

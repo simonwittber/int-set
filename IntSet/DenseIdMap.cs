@@ -182,7 +182,7 @@ public class DenseIdMap : IDisposable
         while (true)
         {
             int stored = _values[idx];
-            if (stored == EMPTY) // Not found
+            if (stored == EMPTY) // ExceptWith found
                 return false;
 
             if (stored != DELETED && _keys[idx] == value) // Found existing (not deleted)

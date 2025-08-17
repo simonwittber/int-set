@@ -8,11 +8,9 @@ using System.Runtime.InteropServices;
 namespace IntSet;
 
 /// <summary>
-/// A set or bitmap of index values (positive integers).
-/// Use case: when values start close to zero and are positive, Eg entity id or sequential database ids. Memory used is proportional to the largest value set.
-/// If memory usage is too large, consider using the ClusteredBitmap instead.
+/// A set or bitmap of integer values.
 /// </summary>
-public class Bitmap 
+public class IntSet : IEnumerable<int>
 {
     private const int PageBits = 6;
     private const int PageSize = 1 << PageBits;
@@ -28,17 +26,17 @@ public class Bitmap
     public int Count => _count;
     public int PageCount => _pageCount;
 
-    public Bitmap()
+    public IntSet()
     {
         _pages = new ulong[16];
         _pageCount = 0;
     }
 
-    public Bitmap(Span<int> values)
+    public IntSet(Span<int> values)
     {
         _pages = new ulong[16];
         _pageCount = 0;
-        Or(values);
+        UnionWith(values);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -52,12 +50,12 @@ public class Bitmap
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool Set(int value)
+    public bool Add(int value)
     {
         GetPageAndBit(value, out var pageIndex, out var mask);
         // make sure the page exists in our _pages array
         EnsurePage(pageIndex);
-        if (IsSet(pageIndex, mask)) return false;
+        if (Contains(pageIndex, mask)) return false;
         SetBit(pageIndex, mask);
         // if we have created a new page, increment pageCount
         _pageCount = pageIndex >= _pageCount ? pageIndex + 1 : _pageCount;
@@ -72,30 +70,30 @@ public class Bitmap
     private void UnSetBit(int p, ulong mask) => _pages[p] &= ~mask;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private bool IsSet(int p, ulong mask) => (_pages[p] & mask) != 0;
+    private bool Contains(int p, ulong mask) => (_pages[p] & mask) != 0;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private void GetPageAndBit(int value, out int pageIndex, out ulong mask)
     {
-        var key = value;
+        var key = ZigZagEncode(value);
         pageIndex = (int) (key >> PageBits);
         var bitIndex = (int) (key & PageMask);
         mask = 1ul << bitIndex;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsSet(int value)
+    public bool Contains(int value)
     {
         GetPageAndBit(value, out var pageIndex, out var mask);
-        return pageIndex < _pageCount && IsSet(pageIndex, mask);
+        return pageIndex < _pageCount && Contains(pageIndex, mask);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool UnSet(int value)
+    public bool Remove(int value)
     {
         GetPageAndBit(value, out var pageIndex, out var mask);
         if (pageIndex >= _pageCount) return false;
-        if (IsSet(pageIndex, mask))
+        if (Contains(pageIndex, mask))
         {
             UnSetBit(pageIndex, mask);
             _count--;
@@ -105,7 +103,7 @@ public class Bitmap
         return false;
     }
 
-    public void And(Span<int> span)
+    public void IntersectWith(Span<int> span)
     {
         var pageCount = _pageCount;
 
@@ -128,7 +126,7 @@ public class Bitmap
         Recount();
     }
     
-    public void Or(Span<int> span)
+    public void UnionWith(Span<int> span)
     {
         var maxPageIndex = _pageCount - 1;
         foreach (var value in span)
@@ -163,15 +161,15 @@ public class Bitmap
         Recount();
     }
 
-    public void Not(Span<int> span)
+    public void ExceptWith(Span<int> span)
     {
         foreach (var v in span)
         {
-            UnSet(v);
+            Remove(v);
         }
     }
 
-    public void Xor(Span<int> span)
+    public void SymmetricExceptWith(Span<int> span)
     {
         var pageCount = _pageCount;
         var masks = pageCount > MaxPageCount ? new ulong[pageCount] : stackalloc ulong[pageCount];
@@ -183,7 +181,7 @@ public class Bitmap
         {
             GetPageAndBit(value, out var pageIndex, out var mask);
             if (pageIndex >= pageCount)
-                Set(value);
+                Add(value);
             else
                 masks[pageIndex] |= mask;
         }
@@ -206,7 +204,7 @@ public class Bitmap
         _count = 0;
     }
 
-    public void Or(Bitmap other)
+    public void UnionWith(IntSet other)
     {
         if (other._count == 0) return;
         if (_count == 0)
@@ -242,7 +240,7 @@ public class Bitmap
         _count = count;
     }
 
-    private void CopyOtherSet(Bitmap other)
+    private void CopyOtherSet(IntSet other)
     {
         _count = other._count;
         _pageCount = other._pageCount;
@@ -251,7 +249,7 @@ public class Bitmap
         Array.Copy(other._pages, _pages, other._pageCount);
     }
 
-    public void And(Bitmap other)
+    public void IntersectWith(IntSet other)
     {
         if (_count == 0 || other._count == 0)
         {
@@ -276,7 +274,7 @@ public class Bitmap
         Recount();
     }
     
-    public void Not(Bitmap other)
+    public void ExceptWith(IntSet other)
     {
         if (_count == 0 || other._count == 0) return;
 
@@ -289,12 +287,12 @@ public class Bitmap
         Recount();
     }
 
-    public void Xor(Bitmap other)
+    public void SymmetricExceptWith(IntSet other)
     {
         if (other._count == 0) return;
         if (_count == 0)
         {
-            Or(other);
+            UnionWith(other);
             return;
         }
 
@@ -319,9 +317,94 @@ public class Bitmap
         Recount();
     }
 
-    public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount);
+    public struct PageEnumerator
+    {
+        private readonly ulong[] _pages;
+        private readonly int _pageCount;
+        private int _index;
+        public BitEnumerator Current { get; private set; }
 
-    public struct Enumerator
+        internal PageEnumerator(ulong[] pages, int pageCount)
+        {
+            _pages = pages;
+            _pageCount = pageCount;
+            _index = -1;
+            Current = default;
+        }
+
+        public PageEnumerator GetEnumerator() => this;
+
+        public bool MoveNext()
+        {
+            while (++_index < _pageCount)
+            {
+                var page = _pages[_index];
+                if (page == 0UL) continue;
+                Current = new BitEnumerator(page, _index << PageBits);
+                return true;
+            }
+            return false;
+        }
+
+        public void Reset()
+        {
+            _index = -1;
+            Current = default;
+        }
+
+        public void Dispose() { }
+    }
+    
+    public PageEnumerator Pages() => new PageEnumerator(_pages, _pageCount);
+    
+    public struct BitEnumerator : IEnumerator<int>
+    {
+        private ulong _currentPage;
+        private int _currentPageBase;
+
+        public BitEnumerator GetEnumerator() => this;
+
+        public void Reset()
+        {
+            _currentPage = 0;
+            _currentPageBase = 0;
+            Current = 0;
+        }
+
+        object? IEnumerator.Current { get; }
+
+        public int Current { get; private set; }
+
+        internal BitEnumerator(ulong page, int pageBase)
+        {
+            _currentPage = page;
+            _currentPageBase = pageBase;
+            Current = 0;
+        }
+
+        public bool MoveNext()
+        {
+            // Extract remaining bits from current page
+            if (_currentPage != 0)
+            {
+                var bitPosition = TrailingZeroCount(_currentPage);
+                _currentPage &= _currentPage - 1; // Clear lowest bit
+                Current = ZigZagDecode((uint)(_currentPageBase | bitPosition));
+                return true;
+            }
+            return false;
+        }
+
+        public void Dispose()
+        {
+        }
+    }
+
+    public Enumerator GetEnumerator() => new Enumerator(_pages, _pageCount);
+    IEnumerator<int> IEnumerable<int>.GetEnumerator() => GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+    
+    public struct Enumerator : IEnumerator<int>
     {
         private readonly ulong[] _pages;
         private readonly int _pageCount;
@@ -338,6 +421,8 @@ public class Bitmap
             _currentPageBase = 0;
             Current = 0;
         }
+
+        object? IEnumerator.Current { get; }
 
         public int Current { get; private set; }
 
@@ -358,7 +443,7 @@ public class Bitmap
             {
                 var bitPosition = TrailingZeroCount(_currentPage);
                 _currentPage &= _currentPage - 1; // Clear lowest bit
-                Current = ((_currentPageBase | bitPosition));
+                Current = ZigZagDecode((uint)(_currentPageBase | bitPosition));
                 return true;
             }
 
@@ -374,7 +459,7 @@ public class Bitmap
                 // to get the the original value
                 var bitPosition = TrailingZeroCount(_currentPage);
                 _currentPage &= _currentPage - 1; // Clear lowest bit
-                Current = ((_currentPageBase | bitPosition));
+                Current = ZigZagDecode((uint)(_currentPageBase | bitPosition));
                 return true;
             }
 
@@ -407,6 +492,26 @@ public class Bitmap
         x = (x + (x >> 4)) & 0x0F0F_0F0F_0F0F_0F0FUL;
         return (int) ((x * 0x0101_0101_0101_0101UL) >> 56);
     }
+    
+    /// <summary>
+    /// Converts negative and positive integers to a non-negative integer using ZigZag encoding.
+    /// -1 => 1, -2 => 3, 0 => 0, 1 => 2, 2 => 4, etc.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static uint ZigZagEncode(int v)
+    {
+        return ((uint) (v << 1)) ^ ((uint) (v >> 31));
+    }
+
+    /// <summary>
+    /// Converts a non-negative integer back to a signed integer using ZigZag decoding.
+    /// 1 => -1, 3 => -2, 0 => 0, 2 => 1, 4 => 2, etc.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static int ZigZagDecode(uint u)
+    {
+        return (int) ((u >> 1) ^ -(u & 1));
+    }
 
     public int[] ToArray()
     {
@@ -428,4 +533,4 @@ public class Bitmap
         }
         return array;
     }
-}
+}   
