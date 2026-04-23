@@ -280,6 +280,42 @@ public class DenseIdMapTests
     }
 
     [Test]
+    public void Remove_RemainingValuesMaintainCorrectIdMapping()
+    {
+        // Bug: Remove() decrements _count but doesn't update _idToValue.
+        // After removing value with id=1, _count=2. TryGetId(30) correctly
+        // returns id=2, but GetValue(2) throws because (uint)2 >= (uint)_count(=2).
+        var vm = new DenseIdMap();
+        vm.GetOrAdd(10); // id=0
+        vm.GetOrAdd(20); // id=1
+        vm.GetOrAdd(30); // id=2
+
+        vm.Remove(20);
+
+        Assert.That(vm.TryGetId(30, out var id30), Is.True);
+        Assert.That(vm.GetValue(id30), Is.EqualTo(30));
+    }
+
+    [Test]
+    public void Remove_ThenGetOrAdd_DoesNotCorruptIdMapping()
+    {
+        // Bug: After Remove(20), _count=2. The next GetOrAdd assigns id=2
+        // and writes _idToValue[2]=40, overwriting the slot that 30 occupies.
+        // TryGetId(30) still returns id=2 from the hash table, but GetValue(2)
+        // now returns 40 instead of 30.
+        var vm = new DenseIdMap();
+        vm.GetOrAdd(10); // id=0
+        vm.GetOrAdd(20); // id=1
+        vm.GetOrAdd(30); // id=2
+
+        vm.Remove(20);
+        vm.GetOrAdd(40); // gets id=2, overwrites _idToValue[2]
+
+        Assert.That(vm.TryGetId(30, out var id30), Is.True);
+        Assert.That(vm.GetValue(id30), Is.EqualTo(30));
+    }
+
+    [Test]
     public void GetEnumerator_MultipleCalls_IndependentIterators()
     {
         var vm = new DenseIdMap();

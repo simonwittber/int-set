@@ -176,4 +176,26 @@ public class TestNativeNativeClusteredBitmap
         }
     }
 
+    [Test]
+    public void Constructor_ClustersAroundFirstValue()
+    {
+        // Bug: Or() never sets _centerValue, so the constructor leaves _centerValue=0.
+        // All values are encoded relative to 0 instead of the first inserted value,
+        // producing a PageCount of 32 instead of 1 for these inputs.
+        using var setFirst = new NativeClusteredBitmap();
+        setFirst.Set(1000);
+        setFirst.Set(1001);
+        setFirst.Set(1002);
+
+        using var fromCtor = new NativeClusteredBitmap([1000, 1001, 1002]);
+
+        Assert.Multiple(() =>
+        {
+            Assert.That(fromCtor.IsSet(1000), Is.True);
+            Assert.That(fromCtor.IsSet(1001), Is.True);
+            Assert.That(fromCtor.IsSet(1002), Is.True);
+            Assert.That(fromCtor.PageCount, Is.EqualTo(setFirst.PageCount));
+        });
+    }
+
 }
