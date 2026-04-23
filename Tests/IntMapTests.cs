@@ -5,6 +5,7 @@ public class IntMapTests
 {
     private const int N = 10000;
     private int[] keys, values, lookup;
+
     [SetUp]
     public void Setup()
     {
@@ -20,8 +21,7 @@ public class IntMapTests
             lookup[i] = RandomValue();
         }
     }
-    
-    
+
     [Test]
     public void TestIntMapAdd()
     {
@@ -33,11 +33,9 @@ public class IntMapTests
             dict[keys[i]] = values[i];
         }
         for (var i = 0; i < keys.Length; i++)
-        {
             Assert.That(map[keys[i]], Is.EqualTo(dict[keys[i]]));
-        }
     }
-    
+
     [Test]
     public void TestIntMapContains()
     {
@@ -48,12 +46,10 @@ public class IntMapTests
             map[keys[i]] = values[i];
             dict[keys[i]] = values[i];
         }
-        foreach(var i in lookup)
-        {
+        foreach (var i in lookup)
             Assert.That(map.ContainsKey(i), Is.EqualTo(dict.ContainsKey(i)));
-        }
     }
-    
+
     [Test]
     public void TestIntMapTryGetValue()
     {
@@ -64,15 +60,17 @@ public class IntMapTests
             map[keys[i]] = values[i];
             dict[keys[i]] = values[i];
         }
-        foreach(var i in lookup)
+        foreach (var i in lookup)
         {
-            var mapValue = 0;
-            var dictValue = 0;
-            Assert.That(map.TryGetValue(i, out mapValue), Is.EqualTo(dict.TryGetValue(i,out dictValue)));
-            Assert.That(mapValue, Is.EqualTo(dictValue));
+            int mapValue = 0, dictValue = 0;
+            Assert.Multiple(() =>
+            {
+                Assert.That(map.TryGetValue(i, out mapValue), Is.EqualTo(dict.TryGetValue(i, out dictValue)));
+                Assert.That(mapValue, Is.EqualTo(dictValue));
+            });
         }
     }
-    
+
     [Test]
     public void TestIntMapRemove()
     {
@@ -84,11 +82,9 @@ public class IntMapTests
             dict[keys[i]] = values[i];
         }
         foreach (var i in lookup)
-        {
             Assert.That(map.Remove(i), Is.EqualTo(dict.Remove(i)));
-        }
     }
-    
+
     [Test]
     public void TestIntMapGet()
     {
@@ -102,13 +98,9 @@ public class IntMapTests
         foreach (var i in lookup)
         {
             if (dict.ContainsKey(i))
-            {
-                Assert.DoesNotThrow(() => { var _ = map[i]; });
-            }
+                Assert.That(() => { var _ = map[i]; }, Throws.Nothing);
             else
-            {
-                Assert.Throws<KeyNotFoundException>(() => { var _ = map[i]; });
-            }
+                Assert.That(() => { var _ = map[i]; }, Throws.InstanceOf<KeyNotFoundException>());
         }
     }
 
@@ -122,25 +114,25 @@ public class IntMapTests
             map[keys[i]] = values[i];
             dict[keys[i]] = values[i];
         }
-
         foreach (var i in map.Keys)
-        {
-            Assert.That(dict.ContainsKey(i));
-        }
+            Assert.That(dict.ContainsKey(i), Is.True);
     }
-    
+
     [Test]
     public void TestIntMapTryGetValuePresentAndAbsent()
     {
         var map = new IntMap<int>();
         map[1] = 42;
         map[2] = 99;
-        int value;
-        Assert.IsTrue(map.TryGetValue(1, out value));
-        Assert.AreEqual(42, value);
-        Assert.IsTrue(map.TryGetValue(2, out value));
-        Assert.AreEqual(99, value);
-        Assert.IsFalse(map.TryGetValue(3, out value));
+        int v1 = 0, v2 = 0;
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.TryGetValue(1, out v1), Is.True);
+            Assert.That(v1, Is.EqualTo(42));
+            Assert.That(map.TryGetValue(2, out v2), Is.True);
+            Assert.That(v2, Is.EqualTo(99));
+            Assert.That(map.TryGetValue(3, out _), Is.False);
+        });
     }
 
     [Test]
@@ -156,7 +148,7 @@ public class IntMapTests
         var actual = new HashSet<int>();
         foreach (var v in map.Values)
             actual.Add(v);
-        CollectionAssert.AreEquivalent(expected, actual);
+        Assert.That(actual, Is.EquivalentTo(expected));
     }
 
     [Test]
@@ -164,9 +156,9 @@ public class IntMapTests
     {
         var map = new IntMap<int>();
         map.TryAdd(5, 100);
-        Assert.AreEqual(100, map[5]);
-        map.TryAdd(5, 200); // Should not overwrite
-        Assert.AreEqual(100, map[5]);
+        Assert.That(map[5], Is.EqualTo(100));
+        map.TryAdd(5, 200);
+        Assert.That(map[5], Is.EqualTo(100));
     }
 
     [Test]
@@ -174,8 +166,8 @@ public class IntMapTests
     {
         var map = new IntMap<int>();
         map.Add(7, 77);
-        Assert.AreEqual(77, map[7]);
-        Assert.Throws<InvalidOperationException>(() => map.Add(7, 88));
+        Assert.That(map[7], Is.EqualTo(77));
+        Assert.That(() => map.Add(7, 88), Throws.InstanceOf<InvalidOperationException>());
     }
 
     [Test]
@@ -183,18 +175,15 @@ public class IntMapTests
     {
         var map = new IntMap<string>();
         var largeKeys = new[] { int.MaxValue, int.MaxValue - 1, 1000000000, 2000000000 };
-        var values = new[] { "max", "max-1", "billion", "2billion" };
-
+        var vals = new[] { "max", "max-1", "billion", "2billion" };
         for (int i = 0; i < largeKeys.Length; i++)
-        {
-            map[largeKeys[i]] = values[i];
-        }
-
+            map[largeKeys[i]] = vals[i];
         for (int i = 0; i < largeKeys.Length; i++)
-        {
-            Assert.AreEqual(values[i], map[largeKeys[i]]);
-            Assert.IsTrue(map.ContainsKey(largeKeys[i]));
-        }
+            Assert.Multiple(() =>
+            {
+                Assert.That(map[largeKeys[i]], Is.EqualTo(vals[i]));
+                Assert.That(map.ContainsKey(largeKeys[i]), Is.True);
+            });
     }
 
     [Test]
@@ -202,79 +191,72 @@ public class IntMapTests
     {
         var map = new IntMap<string>();
         var largeKeys = new[] { int.MinValue, int.MinValue + 1, -1000000000, -2000000000 };
-        var values = new[] { "min", "min+1", "-billion", "-2billion" };
-
+        var vals = new[] { "min", "min+1", "-billion", "-2billion" };
         for (int i = 0; i < largeKeys.Length; i++)
-        {
-            map[largeKeys[i]] = values[i];
-        }
-
+            map[largeKeys[i]] = vals[i];
         for (int i = 0; i < largeKeys.Length; i++)
-        {
-            Assert.AreEqual(values[i], map[largeKeys[i]]);
-            Assert.IsTrue(map.ContainsKey(largeKeys[i]));
-        }
+            Assert.Multiple(() =>
+            {
+                Assert.That(map[largeKeys[i]], Is.EqualTo(vals[i]));
+                Assert.That(map.ContainsKey(largeKeys[i]), Is.True);
+            });
     }
 
     [Test]
     public void TestIntMapExtremeValueGaps()
     {
         var map = new IntMap<int>();
-        
-        // Test the pathological case with extreme gaps
         map[int.MinValue] = 1;
         map[int.MaxValue] = 2;
         map[0] = 3;
-
-        Assert.AreEqual(1, map[int.MinValue]);
-        Assert.AreEqual(2, map[int.MaxValue]);
-        Assert.AreEqual(3, map[0]);
-        Assert.AreEqual(3, map.Count);
-
-        // Test removal
-        Assert.IsTrue(map.Remove(int.MinValue));
-        Assert.IsFalse(map.ContainsKey(int.MinValue));
-        Assert.AreEqual(2, map.Count);
+        Assert.Multiple(() =>
+        {
+            Assert.That(map[int.MinValue], Is.EqualTo(1));
+            Assert.That(map[int.MaxValue], Is.EqualTo(2));
+            Assert.That(map[0], Is.EqualTo(3));
+            Assert.That(map.Count, Is.EqualTo(3));
+        });
+        Assert.That(map.Remove(int.MinValue), Is.True);
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.ContainsKey(int.MinValue), Is.False);
+            Assert.That(map.Count, Is.EqualTo(2));
+        });
     }
 
     [Test]
     public void TestIntMapTryGetValueWithLargeKeys()
     {
         var map = new IntMap<long>();
-        map[-88812381] = 12345L; // This was the problematic value mentioned
+        map[-88812381] = 12345L;
         map[88812381] = 54321L;
-
-        long value;
-        Assert.IsTrue(map.TryGetValue(-88812381, out value));
-        Assert.AreEqual(12345L, value);
-
-        Assert.IsTrue(map.TryGetValue(88812381, out value));
-        Assert.AreEqual(54321L, value);
-
-        Assert.IsFalse(map.TryGetValue(99999999, out value));
-        Assert.AreEqual(0L, value);
+        long v1 = 0, v2 = 0;
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.TryGetValue(-88812381, out v1), Is.True);
+            Assert.That(v1, Is.EqualTo(12345L));
+            Assert.That(map.TryGetValue(88812381, out v2), Is.True);
+            Assert.That(v2, Is.EqualTo(54321L));
+            Assert.That(map.TryGetValue(99999999, out _), Is.False);
+        });
     }
 
     [Test]
     public void TestIntMapValuesIteratorWithLargeKeys()
     {
         var map = new IntMap<int>();
-        var keys = new[] { int.MinValue, -1000000, 0, 1000000, int.MaxValue };
-        var values = new[] { 1, 2, 3, 4, 5 };
-
-        for (int i = 0; i < keys.Length; i++)
-        {
-            map[keys[i]] = values[i];
-        }
-
+        var ks = new[] { int.MinValue, -1000000, 0, 1000000, int.MaxValue };
+        var vs = new[] { 1, 2, 3, 4, 5 };
+        for (int i = 0; i < ks.Length; i++)
+            map[ks[i]] = vs[i];
         var actualValues = new List<int>();
         foreach (var value in map.Values)
-        {
             actualValues.Add(value);
-        }
-
-        Assert.AreEqual(values.Length, actualValues.Count);
-        CollectionAssert.AreEquivalent(values, actualValues);
+        Assert.Multiple(() =>
+        {
+            Assert.That(actualValues, Has.Count.EqualTo(vs.Length));
+            Assert.That(actualValues, Is.EquivalentTo(vs));
+        });
     }
 
     [Test]
@@ -284,14 +266,14 @@ public class IntMapTests
         map[int.MinValue] = "min";
         map[int.MaxValue] = "max";
         map[0] = "zero";
-
-        Assert.AreEqual(3, map.Count);
-        
+        Assert.That(map.Count, Is.EqualTo(3));
         map.Clear();
-        
-        Assert.AreEqual(0, map.Count);
-        Assert.IsFalse(map.ContainsKey(int.MinValue));
-        Assert.IsFalse(map.ContainsKey(int.MaxValue));
-        Assert.IsFalse(map.ContainsKey(0));
+        Assert.Multiple(() =>
+        {
+            Assert.That(map.Count, Is.EqualTo(0));
+            Assert.That(map.ContainsKey(int.MinValue), Is.False);
+            Assert.That(map.ContainsKey(int.MaxValue), Is.False);
+            Assert.That(map.ContainsKey(0), Is.False);
+        });
     }
 }
